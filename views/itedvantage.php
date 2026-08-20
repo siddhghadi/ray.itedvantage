@@ -4,11 +4,11 @@
         <nav aria-label="ITedvantage navigation">
             <a class="active" href="?business=itedvantage"><small>Add Blog</small></a>
         </nav>
-        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch light and dark mode" title="Light / dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button>
+        <button class="theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode" title="Light / dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button>
         <a class="side-bottom" href="./" title="All businesses">⌘</a>
     </aside>
     <main class="td-dashboard">
-        <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Show or hide sidebar">‹</button>
+        <nav class="desktop-menu" aria-label="ITedvantage desktop navigation"><a class="desktop-brand" href="./">RAY</a><div><a class="active" href="?business=itedvantage">Add Blog</a></div><button class="theme-toggle desktop-theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button></nav>
         <header class="td-header">
             <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">ITEDVANTAGE / CONTENT</span><h1>Add Blog</h1><p>Write once, preview clearly, and upload to WordPress after approval.</p></div>
             <div class="header-actions"><span class="soft-badge">Layout mode</span></div>

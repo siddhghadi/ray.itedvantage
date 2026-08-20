@@ -21,11 +21,11 @@ $nav = [
         <nav aria-label="TechDecodes navigation">
             <?php foreach ($nav as $key => [$icon,$label]): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&page=<?= $key ?>" title="<?= htmlspecialchars($label) ?>"><small><?= htmlspecialchars($label) ?></small></a><?php endforeach; ?>
         </nav>
-        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch light and dark mode" title="Light / dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button>
+        <button class="theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode" title="Light / dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button>
         <a class="side-bottom" href="./" title="All businesses">⌘</a>
     </aside>
     <main class="td-dashboard">
-        <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Show or hide sidebar">‹</button>
+        <nav class="desktop-menu" aria-label="TechDecodes desktop navigation"><a class="desktop-brand" href="./">RAY</a><div><?php foreach ($nav as $key => [$icon,$label]): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&page=<?= $key ?>"><?= htmlspecialchars($label) ?></a><?php endforeach; ?></div><button class="theme-toggle desktop-theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button></nav>
         <header class="td-header">
             <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">TECHDECODES / <?= strtoupper(htmlspecialchars($tdPage)) ?></span><h1><?= htmlspecialchars($meta[0]) ?></h1><p><?= htmlspecialchars($meta[1]) ?></p></div>
             <div class="header-actions"><a class="ghost-button button-link" href="?business=techdecodes&page=email">Bulk email</a><a class="primary-button button-link" href="?business=techdecodes&page=leads">＋ Import leads</a></div>

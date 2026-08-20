@@ -1,4 +1,6 @@
 .env
+storage/auth.php
+storage/auth.php.tmp
 /.idea/
 /.vscode/
 /vendor/

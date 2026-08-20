@@ -89,6 +89,10 @@ button:disabled { cursor:not-allowed; opacity:.72; }
 .danger-button { min-height:42px; padding:.7rem 1rem; border:1px solid #ff526b55; border-radius:10px; color:#ff9baa; background:#ff526b18; font-weight:750; cursor:pointer; }
 .delete-confirm { margin:0; display:flex; align-items:center; gap:.4rem; color:#aeb7c9; font-size:.75rem; white-space:nowrap; }
 .delete-confirm input { width:17px; min-height:17px; accent-color:#ff526b; }
+.delete-tools { position:relative; align-self:center; }
+.delete-tools summary { padding:.45rem .6rem; color:#8d97aa; cursor:pointer; font-size:.72rem; list-style:none; }
+.delete-tools > div { position:absolute; z-index:5; right:0; top:100%; min-width:190px; padding:.65rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem; border:1px solid #ff526b30; border-radius:10px; background:#11182a; box-shadow:0 12px 28px #0008; }
+.delete-tools .danger-button { min-height:32px; padding:.4rem .55rem; font-size:.7rem; }
 .email-compose { width:min(880px,100%); margin:2rem auto 0; }
 .compose-panel { padding:clamp(1.25rem,3vw,2rem); }
 .send-button { min-height:50px; font-size:.95rem; }
@@ -110,10 +114,37 @@ code { color:#c8b9ff; }
   .page-panel,.two-column { margin-top:1rem; }
   .metric-grid { margin-top:1.25rem; gap:.7rem; }
   .metric-card { padding:1rem; }
-  .lead-upload,.bulk-bar { align-items:stretch; flex-direction:column; }
-  .lead-upload label,.lead-upload button,.bulk-bar button { width:100%; text-align:center; }
+  .lead-upload { display:grid; grid-template-columns:1fr 1.25fr; align-items:stretch; }
+  .lead-upload label,.lead-upload button { width:100%; text-align:center; }
+  .bulk-bar { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:.45rem; }
+  .bulk-bar select { min-width:0; }
+  .bulk-bar .status-button { width:auto; min-height:40px; padding:.55rem .7rem; white-space:nowrap; }
+  .delete-tools { justify-self:end; }
+  .delete-tools > div { position:fixed; right:1rem; bottom:78px; top:auto; }
   .email-layout .sender-pill { display:none; }
-  .category-filter { align-items:stretch; flex-direction:column; }
-  .category-filter select,.category-filter button { width:100%; }
-  .delete-confirm { padding:.35rem 0; }
+  .category-filter { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:.45rem; }
+  .category-filter label { grid-column:1/-1; }
+  .category-filter select { min-width:0; width:100%; }
+  .category-filter button { width:auto; min-height:42px; }
+  .category-filter .text-link { grid-column:1/-1; }
+  .delete-confirm { padding:.2rem 0; }
+  .page-panel { padding:.95rem; }
+  .lead-table { min-width:670px; }
+  .lead-table th,.lead-table td { padding:.7rem .55rem; }
+  .two-column .panel { padding:1rem; }
+  .stack-form input,.stack-form select,.stack-form textarea { font-size:16px; }
+  .campaign-history summary { padding:.9rem 1rem; }
+  .setting-row { align-items:flex-start; flex-direction:column; gap:.25rem; }
+}
+@media (max-width:420px) {
+  .td-dashboard { padding:.8rem; }
+  .metric-grid { grid-template-columns:1fr 1fr; gap:.55rem; }
+  .metric-card { min-height:112px; padding:.8rem; }
+  .metric-card strong { font-size:1.45rem; }
+  .metric-card small { font-size:.7rem; }
+  .td-header h1 { font-size:1.75rem; }
+  .td-header p { font-size:.85rem; }
+  .lead-upload { grid-template-columns:1fr; }
+  .bulk-bar { grid-template-columns:minmax(0,1fr) auto; }
+  .delete-tools { grid-column:1/-1; }
 }

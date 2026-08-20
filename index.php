@@ -122,7 +122,7 @@ $view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techd
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title><?= $isAuthenticated ? 'Dashboard' : ($isSetup ? 'Sign in' : 'Set up access') ?> · Ray CRM</title>
-    <link rel="stylesheet" href="assets/styles.css">
+    <link rel="stylesheet" href="assets/styles.css?v=<?= (int) filemtime(__DIR__ . '/assets/styles.css') ?>">
 </head>
 <body class="<?= $isAuthenticated ? 'app-page' : 'auth-page' ?>">
 <?php if (!$isAuthenticated): ?>

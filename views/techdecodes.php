@@ -6,13 +6,14 @@ $pageMeta = [
     'revenue' => ['Revenue', 'Understand collected and pending business value.'],
     'email' => ['Bulk Email', 'Send focused campaigns from ' . SENDER_EMAIL . '.'],
     'activity' => ['Activities', 'Keep follow-ups and notes from slipping through.'],
+    'calendar' => ['Content Calendar', 'Plan social-media content month by month.'],
     'settings' => ['Settings', 'Your TechDecodes workspace configuration.'],
 ];
 $meta = $pageMeta[$tdPage];
 $revenueLeads = array_values(array_filter($leads, static fn(array $lead): bool => (float) ($lead['total_value'] ?? 0) > 0));
 $nav = [
     'dashboard' => ['⌂','Dashboard'], 'leads' => ['◎','Leads'], 'payments' => ['₹','Payments'],
-    'revenue' => ['↗','Revenue'], 'email' => ['✉','Bulk Email'], 'activity' => ['✓','Activities'], 'settings' => ['⚙','Settings'],
+    'revenue' => ['↗','Revenue'], 'email' => ['✉','Bulk Email'], 'activity' => ['✓','Activities'], 'calendar' => ['□','Calendar'], 'settings' => ['⚙','Settings'],
 ];
 ?>
 <div class="workspace-shell">
@@ -66,6 +67,8 @@ $nav = [
 
         <?php elseif ($tdPage === 'activity'): ?>
             <section class="two-column"><article class="panel"><span class="eyebrow">FOLLOW-UP</span><h2>Add activity</h2><?php if ($leads): ?><form class="stack-form" method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><label>Lead</label><select name="lead_id" required><option value="">Select lead…</option><?php foreach ($leads as $lead): ?><option value="<?= htmlspecialchars($lead['id']) ?>"><?= htmlspecialchars($lead['business']) ?></option><?php endforeach; ?></select><label>Note</label><textarea name="note" rows="5" maxlength="500" required></textarea><label>Follow-up date</label><input type="date" name="due_date"><button class="primary-button" type="submit" name="add_activity" value="1">Save activity</button></form><?php else: ?><p class="panel-note">Import leads first.</p><?php endif; ?></article><article class="panel"><span class="eyebrow">TIMELINE</span><h2>Latest activities</h2><?php if (!$activities): ?><p class="panel-note">No activities yet.</p><?php endif; ?><?php foreach (array_slice($activities,0,30) as $activity): ?><div class="activity-row"><strong><?= htmlspecialchars($activity['business']) ?></strong><p><?= htmlspecialchars($activity['note']) ?></p><small><?= $activity['due_date'] ? 'Follow up: ' . htmlspecialchars($activity['due_date']) : 'No due date' ?></small></div><?php endforeach; ?></article></section>
+
+        <?php elseif ($tdPage === 'calendar'): $calendarBusiness='techdecodes'; $calendarLabel='SOCIAL MEDIA'; $calendarDefaultChannel='Social'; $calendarTitleLabel='Post topic'; $calendarTitlePlaceholder='Example: SEO tips carousel'; $calendarChannelLabel='Platform'; $calendarChannels=['Instagram','LinkedIn','Facebook','YouTube','X / Twitter','Other']; require __DIR__ . '/content-calendar.php'; ?>
 
         <?php else: ?>
             <section class="two-column"><article class="panel"><span class="eyebrow">WORKSPACE</span><h2>TechDecodes</h2><div class="setting-row"><span>Sender email</span><strong><?= SENDER_EMAIL ?></strong></div><div class="setting-row"><span>Calling eSIM</span><strong><?= OWNER_CALLING_NUMBER ?></strong></div><div class="setting-row"><span>Lead storage</span><strong>Private Hostinger storage</strong></div><div class="setting-row"><span>Campaign limit</span><strong>25 recipients</strong></div></article><article class="panel"><span class="eyebrow">IPHONE CALLING</span><h2>One-tap lead calls</h2><p class="panel-note">Open the CRM on your iPhone and tap “Call via eSIM” beside any lead. Your iPhone dialer opens and uses your selected calling line.</p><a class="small-button button-link" href="tel:<?= preg_replace('/[^0-9+]/', '', OWNER_CALLING_NUMBER) ?>">Test my eSIM line</a></article></section>

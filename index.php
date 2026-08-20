@@ -6,6 +6,7 @@ const AUTH_FILE = __DIR__ . '/storage/auth.php';
 const LEADS_FILE = __DIR__ . '/storage/leads.json';
 const ACTIVITIES_FILE = __DIR__ . '/storage/activities.json';
 const CAMPAIGNS_FILE = __DIR__ . '/storage/campaigns.json';
+const CONTENT_CALENDAR_FILE = __DIR__ . '/storage/content-calendar.json';
 const SENDER_EMAIL = 'contact@techdecodes.com';
 const OWNER_CALLING_NUMBER = '+91 7039636906';
 
@@ -210,7 +211,7 @@ $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $requestedBusiness = (string) ($_GET['business'] ?? '');
 $view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage'], true) ? $requestedBusiness : 'home';
-$allowedPages = ['dashboard','leads','payments','revenue','email','activity','settings'];
+$allowedPages = ['dashboard','leads','payments','revenue','email','activity','calendar','settings'];
 $tdPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $allowedPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 $notice = '';
 if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
@@ -299,6 +300,20 @@ if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] ==
     } catch (Throwable $actionError) { $notice = $actionError->getMessage(); }
 }
 if (isset($_SESSION['notice'])) { $notice = (string) $_SESSION['notice']; unset($_SESSION['notice']); }
+$calendarItems = $isAuthenticated ? loadJsonFile(CONTENT_CALENDAR_FILE) : [];
+if ($isAuthenticated && in_array($view, ['techdecodes','itedvantage'], true) && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf() && isset($_POST['add_calendar_item'])) {
+    try {
+        $calendarDate = (string) ($_POST['calendar_date'] ?? '');
+        $calendarTitle = trim((string) ($_POST['calendar_title'] ?? ''));
+        $calendarChannel = trim((string) ($_POST['calendar_channel'] ?? ''));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $calendarDate) || $calendarTitle === '') throw new RuntimeException('Add a valid date and content title.');
+        array_unshift($calendarItems, ['id'=>bin2hex(random_bytes(8)), 'business'=>$view, 'date'=>$calendarDate, 'title'=>substr($calendarTitle,0,180), 'channel'=>substr($calendarChannel,0,60), 'status'=>'planned', 'created_at'=>gmdate('c')]);
+        saveJsonFile(CONTENT_CALENDAR_FILE, array_slice($calendarItems,0,2000));
+        $_SESSION['notice'] = 'Content added to the calendar.';
+        $month = substr($calendarDate, 0, 7);
+        header('Location: ?business=' . rawurlencode($view) . '&page=calendar&month=' . rawurlencode($month)); exit;
+    } catch (Throwable $calendarError) { $notice = $calendarError->getMessage(); }
+}
 $leads = $isAuthenticated ? loadLeads() : [];
 $leadCount = count($leads);
 $statusCounts = array_fill_keys(['new','pending','contacted','closed','lost'], 0);

@@ -1,19 +1,21 @@
+<?php $itPage = ($_GET['page'] ?? 'add-blog') === 'calendar' ? 'calendar' : 'add-blog'; ?>
 <div class="workspace-shell it-workspace">
     <aside class="side-nav td-side-wide">
         <a class="side-logo ray-wordmark" href="./" aria-label="Ray CRM home">RAY</a>
         <nav aria-label="ITedvantage navigation">
-            <a class="active" href="?business=itedvantage"><small>Add Blog</small></a>
+            <a class="<?= $itPage === 'add-blog' ? 'active' : '' ?>" href="?business=itedvantage"><small>Add Blog</small></a><a class="<?= $itPage === 'calendar' ? 'active' : '' ?>" href="?business=itedvantage&page=calendar"><small>Calendar</small></a>
         </nav>
         <button class="theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode" title="Light / dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button>
         <a class="side-bottom" href="./" title="All businesses">⌘</a>
     </aside>
     <main class="td-dashboard">
-        <nav class="desktop-menu" aria-label="ITedvantage desktop navigation"><a class="desktop-brand" href="./">RAY</a><div><a class="active" href="?business=itedvantage">Add Blog</a></div><button class="theme-toggle desktop-theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button></nav>
+        <nav class="desktop-menu" aria-label="ITedvantage desktop navigation"><a class="desktop-brand" href="./">RAY</a><div><a class="<?= $itPage === 'add-blog' ? 'active' : '' ?>" href="?business=itedvantage">Add Blog</a><a class="<?= $itPage === 'calendar' ? 'active' : '' ?>" href="?business=itedvantage&page=calendar">Content Calendar</a></div><button class="theme-toggle desktop-theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button></nav>
         <header class="td-header">
-            <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">ITEDVANTAGE / CONTENT</span><h1>Add Blog</h1><p>Write once, preview clearly, and upload to WordPress after approval.</p></div>
+            <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">ITEDVANTAGE / CONTENT</span><h1><?= $itPage === 'calendar' ? 'Content Calendar' : 'Add Blog' ?></h1><p><?= $itPage === 'calendar' ? 'Plan blog topics and publishing dates month by month.' : 'Write once, preview clearly, and upload to WordPress after approval.' ?></p></div>
             <div class="header-actions"><span class="soft-badge">Layout mode</span></div>
         </header>
 
+        <?php if ($itPage === 'calendar'): $calendarBusiness='itedvantage'; $calendarLabel='BLOG TOPICS'; $calendarDefaultChannel='Blog'; $calendarTitleLabel='Blog topic'; $calendarTitlePlaceholder='Example: Best AI tools for students'; $calendarChannelLabel='Content type'; $calendarChannels=['How-to Guide','List Article','News','Review','Comparison','Opinion','Other']; require __DIR__ . '/content-calendar.php'; else: ?>
         <section class="blog-builder">
             <article class="panel blog-editor">
                 <div class="panel-heading"><div><span class="eyebrow">BLOG DETAILS</span><h2>Create your post</h2></div><span class="soft-badge">Not saved</span></div>
@@ -57,5 +59,6 @@
                 </div>
             </article>
         </section>
+        <?php endif; ?>
     </main>
 </div>

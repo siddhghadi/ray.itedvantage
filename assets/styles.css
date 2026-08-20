@@ -307,3 +307,29 @@ html[data-theme="light"] .desktop-menu > div a:hover,html[data-theme="light"] .d
   .td-dashboard { width:min(1500px,100%); padding-top:1.25rem; }
 }
 @media (max-width:780px) { .desktop-menu { display:none; } }
+
+/* Shared monthly content calendars */
+.calendar-layout { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:1rem; margin-top:1.5rem; align-items:start; }
+.calendar-main,.calendar-add { min-width:0; }
+.calendar-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; text-align:center; }
+.calendar-toolbar h2 { margin:.3rem 0 0; }
+.calendar-scroll { max-width:100%; overflow:auto; }
+.calendar-grid { min-width:760px; display:grid; grid-template-columns:repeat(7,minmax(100px,1fr)); gap:1px; overflow:hidden; border:1px solid #ffffff12; border-radius:12px; background:#ffffff12; }
+.calendar-weekday { padding:.65rem; color:#a9a9a9; background:#111; text-align:center; font-size:.7rem; font-weight:800; }
+.calendar-day { min-height:118px; padding:.55rem; color:#ddd; background:#151515; }
+.calendar-day.empty { background:#101010; }
+.calendar-day.today { box-shadow:inset 0 0 0 2px #faa61d; }
+.calendar-day > strong { display:block; margin-bottom:.45rem; color:#888; font-size:.72rem; }
+.calendar-day.today > strong { color:#faa61d; }
+.calendar-item { margin-top:.35rem; padding:.4rem; border-left:2px solid #faa61d; border-radius:5px; background:#faa61d13; }
+.calendar-item span,.calendar-item b { display:block; }
+.calendar-item span { color:#c58721; font-size:.58rem; text-transform:uppercase; }
+.calendar-item b { margin-top:.15rem; color:#eee; font-size:.66rem; line-height:1.3; }
+.calendar-add h2 { margin:.35rem 0 1rem; }
+html[data-theme="light"] .calendar-grid { border-color:#dfcfac; background:#dfcfac; }
+html[data-theme="light"] .calendar-weekday { color:#6f624c; background:#f4ead7; }
+html[data-theme="light"] .calendar-day { color:#282828; background:#fffdf8; }
+html[data-theme="light"] .calendar-day.empty { background:#f7f1e6; }
+html[data-theme="light"] .calendar-item b { color:#332713; }
+@media (max-width:1050px) { .calendar-layout { grid-template-columns:1fr; } .calendar-add { order:-1; } }
+@media (max-width:780px) { .calendar-layout { margin-top:1rem; } .calendar-main,.calendar-add { padding:.9rem; } .calendar-grid { min-width:700px; } .calendar-day { min-height:105px; } }

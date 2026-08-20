@@ -7,6 +7,8 @@ storage/activities.json
 storage/activities.json.tmp
 storage/campaigns.json
 storage/campaigns.json.tmp
+storage/content-calendar.json
+storage/content-calendar.json.tmp
 /.idea/
 /.vscode/
 /vendor/

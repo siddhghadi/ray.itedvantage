@@ -25,6 +25,7 @@ $nav = [
         <a class="side-bottom" href="./" title="All businesses">⌘</a>
     </aside>
     <main class="td-dashboard">
+        <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Show or hide sidebar">‹</button>
         <header class="td-header">
             <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">TECHDECODES / <?= strtoupper(htmlspecialchars($tdPage)) ?></span><h1><?= htmlspecialchars($meta[0]) ?></h1><p><?= htmlspecialchars($meta[1]) ?></p></div>
             <div class="header-actions"><a class="ghost-button button-link" href="?business=techdecodes&page=email">Bulk email</a><a class="primary-button button-link" href="?business=techdecodes&page=leads">＋ Import leads</a></div>

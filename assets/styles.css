@@ -48,7 +48,7 @@ button:disabled { cursor:not-allowed; opacity:.72; }
 @media (max-width:780px) { .auth-shell { grid-template-columns:1fr; } .brand-panel { min-height:36vh; padding:2rem; align-items:end; } .brand-panel h1 { font-size:2.8rem; } .auth-card { margin:-1.25rem auto 2rem; width:calc(100% - 2rem); position:relative; } .business-grid { grid-template-columns:1fr; } .business-card { min-height:210px; } .workspace-shell { min-width:0; grid-template-columns:minmax(0,1fr); padding-bottom:74px; } .side-nav { position:fixed; z-index:20; top:auto; bottom:0; width:100%; height:64px; padding:.55rem 1rem; flex-direction:row; border-top:1px solid #ffffff12; border-right:0; } .side-nav nav { margin:0 auto; display:flex; } .side-logo,.side-bottom { display:none; } .td-dashboard { padding:1.25rem; } .td-header { min-width:0; align-items:start; } .td-header .header-actions { display:none; } .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .metric-card { min-width:0; min-height:125px; } .metric-card strong { font-size:1.7rem; } .metric-card small { overflow-wrap:anywhere; } .flow { flex-wrap:wrap; } }
 
 /* TechDecodes multi-page workspace */
-.workspace-shell:has(.td-side-wide) { grid-template-columns:154px minmax(0,1fr); }
+.workspace-shell:has(.td-side-wide) { --sidebar-width:154px; grid-template-columns:var(--sidebar-width) minmax(0,1fr); transition:grid-template-columns .25s ease; }
 .td-side-wide { align-items:stretch; padding:.9rem; }
 .td-side-wide .side-logo { margin:0 auto; }
 .td-side-wide nav { width:100%; gap:.3rem; }
@@ -158,6 +158,8 @@ code { color:#c8b9ff; }
 .ray-wordmark { width:58px; font-size:.7rem; letter-spacing:.08em; }
 .theme-toggle { width:100%; min-height:40px; margin:0 0 .45rem; padding:.4rem; display:flex; align-items:center; justify-content:center; gap:.45rem; border:1px solid #ffffff15; border-radius:11px; color:#aeb8cc; background:#ffffff08; cursor:pointer; }
 .theme-toggle span { font-size:1rem; }.theme-toggle small { font-size:.65rem; }
+.sidebar-toggle { position:fixed; z-index:30; top:14px; left:calc(var(--sidebar-width,154px) + 10px); width:34px; height:34px; display:grid; place-items:center; border:1px solid #ffffff18; border-radius:10px; color:#bdc6da; background:#101729d9; box-shadow:0 8px 24px #0004; backdrop-filter:blur(18px); cursor:pointer; transition:left .25s ease,transform .2s ease; }
+.sidebar-toggle:hover { transform:scale(1.05); }
 .revenue-panel { min-height:0; }
 
 html[data-theme="light"] .workspace-shell { color:#172034; background:radial-gradient(circle at 88% 8%,#cabaff70 0,transparent 30%),radial-gradient(circle at 6% 94%,#aad8ff75 0,transparent 32%),linear-gradient(145deg,#f5f7ff,#eef2fb 60%,#e8effc); }
@@ -173,9 +175,17 @@ html[data-theme="light"] .ghost-button,html[data-theme="light"] .small-button,ht
 html[data-theme="light"] .stage-tabs { border-color:#35415b15; } html[data-theme="light"] .stage-tabs span { color:#68748d; } html[data-theme="light"] .stage-tabs span.selected { color:#3f2b99; }
 html[data-theme="light"] .recipient-list,html[data-theme="light"] .recipient-list label { border-color:#35415b15; } html[data-theme="light"] .recipient-list span,html[data-theme="light"] .campaign-history summary { color:#263149; }
 html[data-theme="light"] .delete-tools > div { background:#fff; }
+html[data-theme="light"] .sidebar-toggle { color:#45516a; border-color:#ffffffcc; background:#ffffffc9; box-shadow:0 8px 22px #68759a20; }
+
+@media (min-width:781px) {
+  html[data-sidebar="collapsed"] .workspace-shell:has(.td-side-wide) { --sidebar-width:0px; }
+  html[data-sidebar="collapsed"] .td-side-wide { transform:translateX(-105%); opacity:0; pointer-events:none; }
+  html[data-sidebar="collapsed"] .sidebar-toggle { left:12px; }
+  .td-side-wide { transition:transform .25s ease,opacity .2s ease; }
+}
 
 @media (max-width:1500px) and (min-width:781px) {
-  .workspace-shell:has(.td-side-wide) { grid-template-columns:112px minmax(0,1fr); }
+  .workspace-shell:has(.td-side-wide) { --sidebar-width:112px; }
   .td-side-wide { padding:.7rem; }
   .td-side-wide nav a { height:39px; padding:0 .55rem; gap:.45rem; }
   .td-side-wide nav a small { font-size:.63rem; }
@@ -193,6 +203,7 @@ html[data-theme="light"] .delete-tools > div { background:#fff; }
 }
 
 @media (max-width:780px) {
+  .sidebar-toggle { display:none; }
   .theme-toggle { width:52px; min-width:52px; height:48px; margin:0; flex-direction:column; gap:0; }
   .theme-toggle small { font-size:.55rem; }
   .td-side-wide .ray-wordmark { display:none; }

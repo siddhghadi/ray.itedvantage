@@ -208,7 +208,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
-$view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techdecodes' : 'home';
+$requestedBusiness = (string) ($_GET['business'] ?? '');
+$view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage'], true) ? $requestedBusiness : 'home';
 $allowedPages = ['dashboard','leads','payments','revenue','email','activity','settings'];
 $tdPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $allowedPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 $notice = '';
@@ -424,6 +425,8 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
             </main>
         </div>
         <?php endif; ?>
+    <?php elseif ($view === 'itedvantage'): ?>
+        <?php require __DIR__ . '/views/itedvantage.php'; ?>
     <?php else: ?>
         <header class="topbar">
             <a class="logo" href="./"><span>R</span> Ray CRM</a>
@@ -433,7 +436,7 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
             <section class="welcome"><span class="eyebrow">YOUR WORKSPACE</span><h1>Good to see you, Siddh.</h1><p>Choose a business to start working.</p></section>
             <section class="business-grid" aria-label="Businesses">
                 <a class="business-card tech" href="?business=techdecodes"><span class="card-icon">TD</span><div><h2>TechDecodes</h2><p>Digital marketing</p></div><span class="status">Open workspace →</span></a>
-                <article class="business-card it"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Content & digital products</p></div><span class="status">Planned</span></article>
+                <a class="business-card it" href="?business=itedvantage"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Blogs & digital products</p></div><span class="status">Open workspace →</span></a>
                 <article class="business-card wool"><span class="card-icon">WR</span><div><h2>Woolen Rangoli</h2><p>Products & orders</p></div><span class="status">Planned</span></article>
             </section>
         </main>

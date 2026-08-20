@@ -265,3 +265,27 @@ html[data-theme="light"] .logout { color:#453a28; border-color:#d7bd8a; backgrou
 html[data-theme="light"] .business-card { color:#202020; border-color:#e8ddc7; background:#fffdf8; box-shadow:0 12px 30px #5e430d12; }
 html[data-theme="light"] .business-card p { color:#6b6458; }
 html[data-theme="light"] .status { color:#514630; background:#f4ead6; }
+
+/* ITedvantage blog builder */
+.blog-builder { min-width:0; display:grid; grid-template-columns:minmax(340px,.88fr) minmax(420px,1.12fr); gap:1rem; margin-top:1.5rem; align-items:start; }
+.blog-editor,.blog-preview-panel { min-width:0; }
+.blog-editor { max-height:calc(100vh - 3rem); overflow:auto; scrollbar-width:thin; }
+.blog-editor input[type=file] { padding:.65rem; color:#aeb6c7; }
+.form-split { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+.form-divider { margin:1.2rem 0 .15rem; padding-top:1rem; border-top:1px solid #ffffff12; color:#faa61d; font-size:.72rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.upload-wordpress:disabled { color:#85734e; background:#faa61d30; box-shadow:none; }
+.connection-note { margin-top:.35rem; color:#7f8796; line-height:1.45; text-align:center; }
+.preview-device { padding:.35rem .55rem; border:1px solid #ffffff13; border-radius:999px; color:#929bad; font-size:.7rem; }
+.blog-preview { margin-top:1rem; overflow:hidden; border:1px solid #dedede; border-radius:14px; color:#222; background:#fff; box-shadow:0 15px 40px #0005; }
+.preview-cover { min-height:270px; display:grid; place-items:center; color:#85622b; background:#f4ead6 center/cover no-repeat; font-weight:750; }
+.preview-body { padding:clamp(1.4rem,4vw,3rem); }
+.preview-category { color:#b46d00; font-size:.68rem; font-weight:850; letter-spacing:.14em; }
+.preview-body h1 { margin:.65rem 0 .5rem; color:#171717; font-family:Georgia,serif; font-size:clamp(2rem,4vw,3.4rem); line-height:1.08; letter-spacing:-.035em; }
+.preview-meta { margin:0 0 1.8rem; color:#858585; font-size:.8rem; }
+.preview-copy { min-height:180px; color:#343434; font-family:Georgia,serif; font-size:1rem; line-height:1.85; white-space:pre-wrap; overflow-wrap:anywhere; }
+.preview-gallery { display:grid; grid-template-columns:repeat(2,1fr); gap:.7rem; margin-top:1.5rem; }
+.preview-gallery img { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:8px; }
+html[data-theme="light"] .form-divider { border-color:#4d3a1715; }
+
+@media (max-width:1100px) { .blog-builder { grid-template-columns:1fr; } .blog-editor { max-height:none; } }
+@media (max-width:780px) { .blog-builder { margin-top:1rem; } .form-split { grid-template-columns:1fr; gap:0; } .preview-cover { min-height:190px; } .preview-body { padding:1.25rem; } .preview-body h1 { font-size:2rem; } }

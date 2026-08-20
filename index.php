@@ -328,6 +328,7 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <meta name="robots" content="noindex, nofollow">
     <title><?= $isAuthenticated ? 'Dashboard' : ($isSetup ? 'Sign in' : 'Set up access') ?> · Ray CRM</title>
     <link rel="stylesheet" href="assets/styles.css?v=<?= (int) filemtime(__DIR__ . '/assets/styles.css') ?>">
+    <script defer src="assets/app.js?v=<?= (int) filemtime(__DIR__ . '/assets/app.js') ?>"></script>
 </head>
 <body class="<?= $isAuthenticated ? 'app-page' : 'auth-page' ?>">
 <?php if (!$isAuthenticated): ?>

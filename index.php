@@ -7,6 +7,7 @@ const LEADS_FILE = __DIR__ . '/storage/leads.json';
 const ACTIVITIES_FILE = __DIR__ . '/storage/activities.json';
 const CAMPAIGNS_FILE = __DIR__ . '/storage/campaigns.json';
 const SENDER_EMAIL = 'contact@techdecodes.com';
+const OWNER_CALLING_NUMBER = '+91 7039636906';
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Strict']);

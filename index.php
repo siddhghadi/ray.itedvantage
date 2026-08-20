@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 const OWNER_EMAIL = 'siddh.ghadi@gmail.com';
 const AUTH_FILE = __DIR__ . '/storage/auth.php';
-require_once __DIR__ . '/lib/database.php';
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Strict']);
@@ -115,54 +114,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techdecodes' : 'home';
-$db = $isAuthenticated ? crmDatabase() : null;
-$notice = '';
-
-if ($isAuthenticated && $db && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
-    try {
-        if (isset($_POST['import_leads']) && isset($_FILES['lead_file'])) {
-            $file = $_FILES['lead_file'];
-            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 10 * 1024 * 1024) {
-                throw new RuntimeException('Choose a CSV file smaller than 10 MB.');
-            }
-            $extension = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
-            if ($extension !== 'csv') throw new RuntimeException('For now, export your sheet as CSV and upload it.');
-            $imported = importLeadCsv($db, (string) $file['tmp_name']);
-            $_SESSION['notice'] = $imported . ' new lead' . ($imported === 1 ? '' : 's') . ' imported.';
-            header('Location: ?business=techdecodes#leads'); exit;
-        }
-        if (isset($_POST['update_status'])) {
-            $ids = array_values(array_filter(array_map('intval', (array) ($_POST['lead_ids'] ?? []))));
-            $status = (string) ($_POST['status'] ?? '');
-            if ($ids && in_array($status, ['new','pending','contacted','closed','lost'], true)) {
-                $marks = implode(',', array_fill(0, count($ids), '?'));
-                $statement = $db->prepare("UPDATE td_leads SET status = ? WHERE id IN ($marks)");
-                $statement->execute(array_merge([$status], $ids));
-                $_SESSION['notice'] = count($ids) . ' lead status updated.';
-            }
-            header('Location: ?business=techdecodes#leads'); exit;
-        }
-        if (isset($_POST['save_payment'])) {
-            $leadId = (int) ($_POST['lead_id'] ?? 0);
-            $total = max(0, (float) ($_POST['total_value'] ?? 0));
-            $received = min($total, max(0, (float) ($_POST['amount_received'] ?? 0)));
-            $statement = $db->prepare("UPDATE td_leads SET total_value = ?, amount_received = ?, status = IF(? > 0, 'closed', status) WHERE id = ?");
-            $statement->execute([$total, $received, $total, $leadId]);
-            $_SESSION['notice'] = 'Payment updated.';
-            header('Location: ?business=techdecodes#payments'); exit;
-        }
-    } catch (Throwable $actionError) {
-        $notice = $actionError->getMessage();
-    }
-}
-if (isset($_SESSION['notice'])) { $notice = (string) $_SESSION['notice']; unset($_SESSION['notice']); }
-
-$leadStats = ['total' => 0, 'new_count' => 0, 'pending_count' => 0, 'contacted_count' => 0, 'closed_count' => 0, 'revenue' => 0, 'received' => 0, 'pending_payment' => 0];
-$leads = [];
-if ($db && $view === 'techdecodes') {
-    $leadStats = $db->query("SELECT COUNT(*) total, SUM(status='new') new_count, SUM(status='pending') pending_count, SUM(status='contacted') contacted_count, SUM(status='closed') closed_count, COALESCE(SUM(total_value),0) revenue, COALESCE(SUM(amount_received),0) received, COALESCE(SUM(GREATEST(total_value-amount_received,0)),0) pending_payment FROM td_leads")->fetch() ?: $leadStats;
-    $leads = $db->query('SELECT * FROM td_leads ORDER BY created_at DESC LIMIT 200')->fetchAll();
-}
 ?>
 <!doctype html>
 <html lang="en">
@@ -218,42 +169,23 @@ if ($db && $view === 'techdecodes') {
                 <header class="td-header">
                     <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">TECHDECODES</span><h1>Lead Command Center</h1><p>Scrape. Qualify. Contact. Close.</p></div>
                     <div class="header-actions">
-                        <button class="ghost-button" type="button" disabled title="Email connection comes next">Bulk email</button>
-                        <a class="primary-button button-link" href="#leads">＋ Import leads</a>
+                        <button class="ghost-button" type="button" disabled>Bulk email</button>
+                        <button class="primary-button" type="button" disabled>＋ Import leads</button>
                     </div>
                 </header>
 
                 <section class="metric-grid" aria-label="Lead overview">
-                    <article class="metric-card"><span>Total leads</span><strong><?= number_format((int) $leadStats['total']) ?></strong><small><?= $leadStats['total'] ? 'Across your pipeline' : 'Ready for your first import' ?></small></article>
-                    <article class="metric-card purple"><span>Pending follow-up</span><strong><?= number_format((int) $leadStats['pending_count']) ?></strong><small><?= $leadStats['pending_count'] ? 'Needs your attention' : 'No pending leads' ?></small></article>
-                    <article class="metric-card green"><span>Total deal value</span><strong>₹<?= number_format((float) $leadStats['revenue'], 0) ?></strong><small>From closed leads</small></article>
-                    <article class="metric-card orange"><span>Pending payment</span><strong>₹<?= number_format((float) $leadStats['pending_payment'], 0) ?></strong><small><?= $leadStats['pending_payment'] ? 'Still to collect' : 'Nothing outstanding' ?></small></article>
+                    <article class="metric-card"><span>Total leads</span><strong>0</strong><small>Ready for your first import</small></article>
+                    <article class="metric-card purple"><span>Pending follow-up</span><strong>0</strong><small>No pending leads</small></article>
+                    <article class="metric-card green"><span>Total revenue</span><strong>₹0</strong><small>From closed leads</small></article>
+                    <article class="metric-card orange"><span>Pending payment</span><strong>₹0</strong><small>Nothing outstanding</small></article>
                 </section>
 
                 <section class="td-grid">
                     <article class="panel leads-panel" id="leads">
-                        <div class="panel-heading"><div><span class="eyebrow">PIPELINE</span><h2>Leads</h2></div></div>
-                        <?php if ($notice !== ''): ?><div class="td-notice"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
-                        <form class="upload-form" method="post" enctype="multipart/form-data">
-                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
-                            <input id="lead-file" type="file" name="lead_file" accept=".csv,text/csv" required>
-                            <label class="small-button" for="lead-file">Choose CSV sheet</label>
-                            <button class="primary-button" type="submit" name="import_leads" value="1">Upload leads</button>
-                        </form>
-                        <div class="stage-tabs"><span class="selected">All <b><?= (int) $leadStats['total'] ?></b></span><span>New <b><?= (int) $leadStats['new_count'] ?></b></span><span>Pending <b><?= (int) $leadStats['pending_count'] ?></b></span><span>Contacted <b><?= (int) $leadStats['contacted_count'] ?></b></span><span>Closed <b><?= (int) $leadStats['closed_count'] ?></b></span></div>
-                        <?php if (!$db): ?>
-                            <div class="empty-state"><div class="upload-icon">!</div><h3>Database connection pending</h3><p>The private database is being connected. Please check again shortly.</p></div>
-                        <?php elseif (!$leads): ?>
-                            <div class="empty-state"><div class="upload-icon">⇧</div><h3>Import your first lead sheet</h3><p>Export your Google or Excel sheet as CSV. Include a Name/Business column plus any Email, Phone, Website, Address, or Category columns.</p></div>
-                        <?php else: ?>
-                            <form method="post">
-                                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
-                                <div class="bulk-bar"><select name="status" required><option value="">Change selected status…</option><option value="new">New</option><option value="pending">Pending</option><option value="contacted">Contacted</option><option value="closed">Closed</option><option value="lost">Lost</option></select><button class="small-button" type="submit" name="update_status" value="1">Apply</button></div>
-                                <div class="lead-table-wrap"><table class="lead-table"><thead><tr><th></th><th>Business</th><th>Contact</th><th>Status</th><th>Action</th></tr></thead><tbody>
-                                <?php foreach ($leads as $lead): ?><tr><td><input type="checkbox" name="lead_ids[]" value="<?= (int) $lead['id'] ?>"></td><td><strong><?= htmlspecialchars($lead['business_name']) ?></strong><small><?= htmlspecialchars($lead['category'] ?: ($lead['website'] ?: '—')) ?></small></td><td><span><?= htmlspecialchars($lead['email'] ?: 'No email') ?></span><small><?= htmlspecialchars($lead['phone'] ?: 'No phone') ?></small></td><td><span class="lead-status <?= htmlspecialchars($lead['status']) ?>"><?= htmlspecialchars(ucfirst($lead['status'])) ?></span></td><td><?= $lead['phone'] ? '<a class="call-link" href="tel:' . htmlspecialchars(preg_replace('/[^0-9+]/', '', $lead['phone'])) . '">Call</a>' : '—' ?></td></tr><?php endforeach; ?>
-                                </tbody></table></div>
-                            </form>
-                        <?php endif; ?>
+                        <div class="panel-heading"><div><span class="eyebrow">PIPELINE</span><h2>Leads</h2></div><button class="small-button" type="button" disabled>Upload sheet</button></div>
+                        <div class="stage-tabs"><span class="selected">All <b>0</b></span><span>New <b>0</b></span><span>Pending <b>0</b></span><span>Contacted <b>0</b></span><span>Closed <b>0</b></span></div>
+                        <div class="empty-state"><div class="upload-icon">⇧</div><h3>Import your first lead sheet</h3><p>CSV and Excel uploads will create leads and separate them by status.</p><button class="primary-button" type="button" disabled>Upload spreadsheet</button></div>
                     </article>
 
                     <article class="panel quick-panel" id="activity">
@@ -264,12 +196,11 @@ if ($db && $view === 'techdecodes') {
                     </article>
 
                     <article class="panel money-panel" id="payments">
-                        <div class="panel-heading"><div><span class="eyebrow">MONEY</span><h2>Payments</h2></div><span class="soft-badge"><?= (int) $leadStats['closed_count'] ?> closed</span></div>
-                        <div class="money-row"><span>Closed deal value</span><strong>₹<?= number_format((float) $leadStats['revenue'], 0) ?></strong></div>
-                        <div class="money-row"><span>Amount received</span><strong>₹<?= number_format((float) $leadStats['received'], 0) ?></strong></div>
-                        <div class="money-row pending"><span>Payment pending</span><strong>₹<?= number_format((float) $leadStats['pending_payment'], 0) ?></strong></div>
-                        <?php if ($leads): ?><form class="payment-form" method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><select name="lead_id" required><option value="">Select lead…</option><?php foreach ($leads as $lead): ?><option value="<?= (int) $lead['id'] ?>"><?= htmlspecialchars($lead['business_name']) ?></option><?php endforeach; ?></select><input type="number" name="total_value" min="0" step="0.01" placeholder="Total deal value" required><input type="number" name="amount_received" min="0" step="0.01" placeholder="Amount received" required><button class="primary-button" type="submit" name="save_payment" value="1">Save payment</button></form><?php endif; ?>
-                        <p class="panel-note">Enter the total deal value and received amount. The pending balance updates automatically.</p>
+                        <div class="panel-heading"><div><span class="eyebrow">MONEY</span><h2>Payments</h2></div><span class="soft-badge">No entries</span></div>
+                        <div class="money-row"><span>Closed deal value</span><strong>₹0</strong></div>
+                        <div class="money-row"><span>Amount received</span><strong>₹0</strong></div>
+                        <div class="money-row pending"><span>Payment pending</span><strong>₹0</strong></div>
+                        <p class="panel-note">When a lead closes, record the total value and received amount. The balance will update automatically.</p>
                     </article>
 
                     <article class="panel flow-panel">

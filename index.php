@@ -113,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
+$view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techdecodes' : 'home';
 ?>
 <!doctype html>
 <html lang="en">
@@ -152,18 +153,78 @@ $isSetup = $auth !== null;
         </section>
     </main>
 <?php else: ?>
-    <header class="topbar">
-        <a class="logo" href="./"><span>R</span> Ray CRM</a>
-        <form method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><button class="logout" type="submit" name="logout" value="1">Sign out</button></form>
-    </header>
-    <main class="dashboard">
-        <section class="welcome"><span class="eyebrow">YOUR WORKSPACE</span><h1>Good to see you, Siddh.</h1><p>Choose a business to start working.</p></section>
-        <section class="business-grid" aria-label="Businesses">
-            <article class="business-card tech"><span class="card-icon">TD</span><div><h2>TechDecodes</h2><p>Digital marketing</p></div><span class="status">Coming next</span></article>
-            <article class="business-card it"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Content & digital products</p></div><span class="status">Planned</span></article>
-            <article class="business-card wool"><span class="card-icon">WR</span><div><h2>Woolen Rangoli</h2><p>Products & orders</p></div><span class="status">Planned</span></article>
-        </section>
-    </main>
+    <?php if ($view === 'techdecodes'): ?>
+        <div class="workspace-shell">
+            <aside class="side-nav">
+                <a class="side-logo" href="./" aria-label="Ray CRM home">R</a>
+                <nav aria-label="TechDecodes navigation">
+                    <a class="active" href="?business=techdecodes" title="Dashboard">⌂</a>
+                    <a href="#leads" title="Leads">◎</a>
+                    <a href="#payments" title="Payments">₹</a>
+                    <a href="#activity" title="Activity">↗</a>
+                </nav>
+                <a class="side-bottom" href="./" title="All businesses">⌘</a>
+            </aside>
+            <main class="td-dashboard">
+                <header class="td-header">
+                    <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">TECHDECODES</span><h1>Lead Command Center</h1><p>Scrape. Qualify. Contact. Close.</p></div>
+                    <div class="header-actions">
+                        <button class="ghost-button" type="button" disabled>Bulk email</button>
+                        <button class="primary-button" type="button" disabled>＋ Import leads</button>
+                    </div>
+                </header>
+
+                <section class="metric-grid" aria-label="Lead overview">
+                    <article class="metric-card"><span>Total leads</span><strong>0</strong><small>Ready for your first import</small></article>
+                    <article class="metric-card purple"><span>Pending follow-up</span><strong>0</strong><small>No pending leads</small></article>
+                    <article class="metric-card green"><span>Total revenue</span><strong>₹0</strong><small>From closed leads</small></article>
+                    <article class="metric-card orange"><span>Pending payment</span><strong>₹0</strong><small>Nothing outstanding</small></article>
+                </section>
+
+                <section class="td-grid">
+                    <article class="panel leads-panel" id="leads">
+                        <div class="panel-heading"><div><span class="eyebrow">PIPELINE</span><h2>Leads</h2></div><button class="small-button" type="button" disabled>Upload sheet</button></div>
+                        <div class="stage-tabs"><span class="selected">All <b>0</b></span><span>New <b>0</b></span><span>Pending <b>0</b></span><span>Contacted <b>0</b></span><span>Closed <b>0</b></span></div>
+                        <div class="empty-state"><div class="upload-icon">⇧</div><h3>Import your first lead sheet</h3><p>CSV and Excel uploads will create leads and separate them by status.</p><button class="primary-button" type="button" disabled>Upload spreadsheet</button></div>
+                    </article>
+
+                    <article class="panel quick-panel" id="activity">
+                        <div class="panel-heading"><div><span class="eyebrow">ONE-TAP ACTIONS</span><h2>Quick contact</h2></div></div>
+                        <div class="quick-action"><span class="quick-icon call">☎</span><div><strong>Call from iPhone</strong><small>Tap a lead number to open your dialer</small></div></div>
+                        <div class="quick-action"><span class="quick-icon mail">✉</span><div><strong>Bulk email</strong><small>Select leads and send one campaign</small></div></div>
+                        <div class="quick-action"><span class="quick-icon note">✓</span><div><strong>Update status</strong><small>Move selected leads through the pipeline</small></div></div>
+                    </article>
+
+                    <article class="panel money-panel" id="payments">
+                        <div class="panel-heading"><div><span class="eyebrow">MONEY</span><h2>Payments</h2></div><span class="soft-badge">No entries</span></div>
+                        <div class="money-row"><span>Closed deal value</span><strong>₹0</strong></div>
+                        <div class="money-row"><span>Amount received</span><strong>₹0</strong></div>
+                        <div class="money-row pending"><span>Payment pending</span><strong>₹0</strong></div>
+                        <p class="panel-note">When a lead closes, record the total value and received amount. The balance will update automatically.</p>
+                    </article>
+
+                    <article class="panel flow-panel">
+                        <div class="panel-heading"><div><span class="eyebrow">WORKFLOW</span><h2>Lead journey</h2></div></div>
+                        <div class="flow"><span>New</span><i>→</i><span>Pending</span><i>→</i><span>Contacted</span><i>→</i><span>Closed</span></div>
+                        <p class="panel-note">Every uploaded lead starts as New. You can update one lead or many together.</p>
+                    </article>
+                </section>
+            </main>
+        </div>
+    <?php else: ?>
+        <header class="topbar">
+            <a class="logo" href="./"><span>R</span> Ray CRM</a>
+            <form method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><button class="logout" type="submit" name="logout" value="1">Sign out</button></form>
+        </header>
+        <main class="dashboard">
+            <section class="welcome"><span class="eyebrow">YOUR WORKSPACE</span><h1>Good to see you, Siddh.</h1><p>Choose a business to start working.</p></section>
+            <section class="business-grid" aria-label="Businesses">
+                <a class="business-card tech" href="?business=techdecodes"><span class="card-icon">TD</span><div><h2>TechDecodes</h2><p>Digital marketing</p></div><span class="status">Open workspace →</span></a>
+                <article class="business-card it"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Content & digital products</p></div><span class="status">Planned</span></article>
+                <article class="business-card wool"><span class="card-icon">WR</span><div><h2>Woolen Rangoli</h2><p>Products & orders</p></div><span class="status">Planned</span></article>
+            </section>
+        </main>
+    <?php endif; ?>
 <?php endif; ?>
 </body>
 </html>

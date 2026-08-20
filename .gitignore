@@ -1,6 +1,7 @@
 .env
 storage/auth.php
 storage/auth.php.tmp
+storage/database.php
 /.idea/
 /.vscode/
 /vendor/

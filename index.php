@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techdecodes' : 'home';
-$db = $isAuthenticated ? crmDatabase() : null;
+$db = ($isAuthenticated && $view === 'techdecodes') ? crmDatabase() : null;
 $notice = '';
 
 if ($isAuthenticated && $db && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
@@ -160,8 +160,14 @@ if (isset($_SESSION['notice'])) { $notice = (string) $_SESSION['notice']; unset(
 $leadStats = ['total' => 0, 'new_count' => 0, 'pending_count' => 0, 'contacted_count' => 0, 'closed_count' => 0, 'revenue' => 0, 'received' => 0, 'pending_payment' => 0];
 $leads = [];
 if ($db && $view === 'techdecodes') {
-    $leadStats = $db->query("SELECT COUNT(*) total, SUM(status='new') new_count, SUM(status='pending') pending_count, SUM(status='contacted') contacted_count, SUM(status='closed') closed_count, COALESCE(SUM(total_value),0) revenue, COALESCE(SUM(amount_received),0) received, COALESCE(SUM(GREATEST(total_value-amount_received,0)),0) pending_payment FROM td_leads")->fetch() ?: $leadStats;
-    $leads = $db->query('SELECT * FROM td_leads ORDER BY created_at DESC LIMIT 200')->fetchAll();
+    try {
+        $leadStats = $db->query("SELECT COUNT(*) total, COALESCE(SUM(status='new'),0) new_count, COALESCE(SUM(status='pending'),0) pending_count, COALESCE(SUM(status='contacted'),0) contacted_count, COALESCE(SUM(status='closed'),0) closed_count, COALESCE(SUM(total_value),0) revenue, COALESCE(SUM(amount_received),0) received, COALESCE(SUM(GREATEST(total_value-amount_received,0)),0) pending_payment FROM td_leads")->fetch() ?: $leadStats;
+        $leads = $db->query('SELECT * FROM td_leads ORDER BY created_at DESC LIMIT 200')->fetchAll();
+    } catch (Throwable $databaseError) {
+        error_log('Ray CRM lead query error: ' . $databaseError->getMessage());
+        $db = null;
+        $notice = 'The lead database is temporarily unavailable.';
+    }
 }
 ?>
 <!doctype html>

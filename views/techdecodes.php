@@ -1,0 +1,70 @@
+<?php
+$pageMeta = [
+    'dashboard' => ['Command Center', 'A clear view of leads, follow-ups, and money.'],
+    'leads' => ['Leads', 'Import, qualify, contact, and close opportunities.'],
+    'payments' => ['Payments', 'Record deal values and track outstanding balances.'],
+    'revenue' => ['Revenue', 'Understand collected and pending business value.'],
+    'email' => ['Bulk Email', 'Send focused campaigns from ' . SENDER_EMAIL . '.'],
+    'activity' => ['Activities', 'Keep follow-ups and notes from slipping through.'],
+    'settings' => ['Settings', 'Your TechDecodes workspace configuration.'],
+];
+$meta = $pageMeta[$tdPage];
+$nav = [
+    'dashboard' => ['⌂','Dashboard'], 'leads' => ['◎','Leads'], 'payments' => ['₹','Payments'],
+    'revenue' => ['↗','Revenue'], 'email' => ['✉','Bulk Email'], 'activity' => ['✓','Activities'], 'settings' => ['⚙','Settings'],
+];
+?>
+<div class="workspace-shell">
+    <aside class="side-nav td-side-wide">
+        <a class="side-logo" href="./" aria-label="Ray CRM home">R</a>
+        <nav aria-label="TechDecodes navigation">
+            <?php foreach ($nav as $key => [$icon,$label]): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&page=<?= $key ?>" title="<?= htmlspecialchars($label) ?>"><span><?= $icon ?></span><small><?= htmlspecialchars($label) ?></small></a><?php endforeach; ?>
+        </nav>
+        <a class="side-bottom" href="./" title="All businesses">⌘</a>
+    </aside>
+    <main class="td-dashboard">
+        <header class="td-header">
+            <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">TECHDECODES / <?= strtoupper(htmlspecialchars($tdPage)) ?></span><h1><?= htmlspecialchars($meta[0]) ?></h1><p><?= htmlspecialchars($meta[1]) ?></p></div>
+            <div class="header-actions"><a class="ghost-button button-link" href="?business=techdecodes&page=email">Bulk email</a><a class="primary-button button-link" href="?business=techdecodes&page=leads">＋ Import leads</a></div>
+        </header>
+        <?php if ($notice !== ''): ?><div class="td-notice"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
+
+        <?php if ($tdPage === 'dashboard'): ?>
+            <section class="metric-grid" aria-label="Business overview">
+                <a class="metric-card metric-link" href="?business=techdecodes&page=leads"><span>Total leads</span><strong><?= $leadCount ?></strong><small><?= $statusCounts['new'] ?> new opportunities</small></a>
+                <a class="metric-card purple metric-link" href="?business=techdecodes&page=activity"><span>Pending follow-up</span><strong><?= $statusCounts['pending'] ?></strong><small><?= count($activities) ?> saved activities</small></a>
+                <a class="metric-card green metric-link" href="?business=techdecodes&page=revenue"><span>Total deal value</span><strong>₹<?= number_format($totalRevenue, 0) ?></strong><small>₹<?= number_format($receivedRevenue, 0) ?> collected</small></a>
+                <a class="metric-card orange metric-link" href="?business=techdecodes&page=payments"><span>Pending payment</span><strong>₹<?= number_format($pendingRevenue, 0) ?></strong><small><?= $pendingRevenue ? 'Still to collect' : 'Nothing outstanding' ?></small></a>
+            </section>
+            <section class="td-grid">
+                <article class="panel"><div class="panel-heading"><div><span class="eyebrow">PIPELINE</span><h2>Lead health</h2></div><a class="text-link" href="?business=techdecodes&page=leads">View leads →</a></div><div class="pipeline-list"><?php foreach (['new','pending','contacted','closed','lost'] as $status): ?><div><span><?= ucfirst($status) ?></span><strong><?= $statusCounts[$status] ?></strong></div><?php endforeach; ?></div></article>
+                <article class="panel"><div class="panel-heading"><div><span class="eyebrow">TODAY</span><h2>Next actions</h2></div></div><div class="quick-action"><span class="quick-icon call">☎</span><div><strong>Call a lead</strong><small>Open Leads and tap a phone number</small></div></div><div class="quick-action"><span class="quick-icon mail">✉</span><div><strong>Send a campaign</strong><small><?= count(array_filter($leads, fn($lead) => filter_var($lead['email'], FILTER_VALIDATE_EMAIL))) ?> leads have email</small></div></div></article>
+            </section>
+
+        <?php elseif ($tdPage === 'leads'): ?>
+            <section class="panel page-panel">
+                <div class="panel-heading"><div><span class="eyebrow">IMPORT</span><h2>Lead sheet</h2></div><span class="soft-badge"><?= $leadCount ?> saved</span></div>
+                <form class="lead-upload" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><input id="lead-file" type="file" name="lead_file" accept=".csv,text/csv" required><label class="small-button" for="lead-file">Choose CSV</label><button class="primary-button" type="submit" name="import_leads" value="1">Upload leads</button></form>
+                <div class="stage-tabs"><?php foreach (['all','new','pending','contacted','closed','lost'] as $status): ?><span class="<?= $status === 'all' ? 'selected' : '' ?>"><?= ucfirst($status) ?> <b><?= $status === 'all' ? $leadCount : $statusCounts[$status] ?></b></span><?php endforeach; ?></div>
+                <?php if (!$leads): ?><div class="empty-state"><div class="upload-icon">⇧</div><h3>Import your first lead sheet</h3><p>Export Google Sheets or Excel as CSV, then upload it here.</p></div><?php else: ?>
+                <form method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><div class="bulk-bar"><select name="status" required><option value="">Change selected status…</option><?php foreach (['new','pending','contacted','closed','lost'] as $status): ?><option value="<?= $status ?>"><?= ucfirst($status) ?></option><?php endforeach; ?></select><button class="small-button" type="submit" name="update_status" value="1">Apply</button></div>
+                <div class="lead-table-wrap"><table class="lead-table"><thead><tr><th></th><th>Business</th><th>Contact</th><th>Status</th><th>Action</th></tr></thead><tbody><?php foreach (array_reverse($leads) as $lead): ?><tr><td><input type="checkbox" name="lead_ids[]" value="<?= htmlspecialchars($lead['id']) ?>"></td><td><strong><?= htmlspecialchars($lead['business']) ?></strong><small><?= htmlspecialchars($lead['category'] ?: ($lead['website'] ?: '—')) ?></small></td><td><?= htmlspecialchars($lead['email'] ?: 'No email') ?><small><?= htmlspecialchars($lead['phone'] ?: 'No phone') ?></small></td><td><span class="lead-status <?= htmlspecialchars($lead['status']) ?>"><?= ucfirst(htmlspecialchars($lead['status'])) ?></span></td><td><?= $lead['phone'] ? '<a class="call-link" href="tel:' . htmlspecialchars(preg_replace('/[^0-9+]/', '', $lead['phone'])) . '">Call</a>' : '—' ?></td></tr><?php endforeach; ?></tbody></table></div></form><?php endif; ?>
+            </section>
+
+        <?php elseif ($tdPage === 'payments'): ?>
+            <section class="two-column"><article class="panel"><span class="eyebrow">UPDATE</span><h2>Add or update payment</h2><?php if ($leads): ?><form class="stack-form" method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><label>Lead</label><select name="lead_id" required><option value="">Select lead…</option><?php foreach ($leads as $lead): ?><option value="<?= htmlspecialchars($lead['id']) ?>"><?= htmlspecialchars($lead['business']) ?></option><?php endforeach; ?></select><label>Total deal value</label><input type="number" name="total_value" min="0" step="0.01" required><label>Amount received</label><input type="number" name="amount_received" min="0" step="0.01" required><button class="primary-button" type="submit" name="save_payment" value="1">Save payment</button></form><?php else: ?><p class="panel-note">Import leads first.</p><?php endif; ?></article><article class="panel"><span class="eyebrow">SUMMARY</span><h2>Payment position</h2><div class="money-row"><span>Deal value</span><strong>₹<?= number_format($totalRevenue, 0) ?></strong></div><div class="money-row"><span>Received</span><strong>₹<?= number_format($receivedRevenue, 0) ?></strong></div><div class="money-row pending"><span>Pending</span><strong>₹<?= number_format($pendingRevenue, 0) ?></strong></div></article></section>
+
+        <?php elseif ($tdPage === 'revenue'): ?>
+            <section class="metric-grid"><article class="metric-card green"><span>Total deal value</span><strong>₹<?= number_format($totalRevenue, 0) ?></strong><small>Across all leads</small></article><article class="metric-card"><span>Collected</span><strong>₹<?= number_format($receivedRevenue, 0) ?></strong><small><?= $totalRevenue > 0 ? round($receivedRevenue / $totalRevenue * 100) : 0 ?>% collection rate</small></article><article class="metric-card orange"><span>Outstanding</span><strong>₹<?= number_format($pendingRevenue, 0) ?></strong><small>Pending collection</small></article><article class="metric-card purple"><span>Closed leads</span><strong><?= $statusCounts['closed'] ?></strong><small>Recorded clients</small></article></section><section class="panel page-panel"><div class="panel-heading"><div><span class="eyebrow">CLIENT VALUE</span><h2>Revenue by lead</h2></div></div><div class="lead-table-wrap"><table class="lead-table"><thead><tr><th>Business</th><th>Deal value</th><th>Received</th><th>Pending</th></tr></thead><tbody><?php foreach ($leads as $lead): if ((float) $lead['total_value'] <= 0) continue; ?><tr><td><strong><?= htmlspecialchars($lead['business']) ?></strong></td><td>₹<?= number_format((float) $lead['total_value'], 0) ?></td><td>₹<?= number_format((float) $lead['amount_received'], 0) ?></td><td>₹<?= number_format(max(0, (float) $lead['total_value'] - (float) $lead['amount_received']), 0) ?></td></tr><?php endforeach; ?></tbody></table></div></section>
+
+        <?php elseif ($tdPage === 'email'): ?>
+            <section class="two-column email-layout"><article class="panel"><div class="panel-heading"><div><span class="eyebrow">CAMPAIGN</span><h2>Compose bulk email</h2></div><span class="sender-pill">From <?= SENDER_EMAIL ?></span></div><p class="panel-note">Select up to 25 valid lead emails per campaign. Use <code>{{business}}</code> to personalize the message.</p><form class="stack-form" method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><label>Recipients</label><div class="recipient-list"><?php foreach ($leads as $lead): if (!filter_var($lead['email'], FILTER_VALIDATE_EMAIL)) continue; ?><label><input type="checkbox" name="lead_ids[]" value="<?= htmlspecialchars($lead['id']) ?>"><span><?= htmlspecialchars($lead['business']) ?><small><?= htmlspecialchars($lead['email']) ?></small></span></label><?php endforeach; ?></div><label>Subject</label><input type="text" name="subject" maxlength="150" required><label>Message</label><textarea name="message" rows="9" maxlength="5000" required></textarea><button class="primary-button" type="submit" name="send_campaign" value="1">Send campaign now</button></form></article><article class="panel"><span class="eyebrow">HISTORY</span><h2>Recent campaigns</h2><?php if (!$campaigns): ?><p class="panel-note">No campaigns sent yet.</p><?php endif; ?><?php foreach (array_slice($campaigns,0,10) as $campaign): ?><div class="campaign-row"><strong><?= htmlspecialchars($campaign['subject']) ?></strong><small><?= (int) $campaign['sent'] ?> sent · <?= (int) $campaign['failed'] ?> failed</small></div><?php endforeach; ?></article></section>
+
+        <?php elseif ($tdPage === 'activity'): ?>
+            <section class="two-column"><article class="panel"><span class="eyebrow">FOLLOW-UP</span><h2>Add activity</h2><?php if ($leads): ?><form class="stack-form" method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><label>Lead</label><select name="lead_id" required><option value="">Select lead…</option><?php foreach ($leads as $lead): ?><option value="<?= htmlspecialchars($lead['id']) ?>"><?= htmlspecialchars($lead['business']) ?></option><?php endforeach; ?></select><label>Note</label><textarea name="note" rows="5" maxlength="500" required></textarea><label>Follow-up date</label><input type="date" name="due_date"><button class="primary-button" type="submit" name="add_activity" value="1">Save activity</button></form><?php else: ?><p class="panel-note">Import leads first.</p><?php endif; ?></article><article class="panel"><span class="eyebrow">TIMELINE</span><h2>Latest activities</h2><?php if (!$activities): ?><p class="panel-note">No activities yet.</p><?php endif; ?><?php foreach (array_slice($activities,0,30) as $activity): ?><div class="activity-row"><strong><?= htmlspecialchars($activity['business']) ?></strong><p><?= htmlspecialchars($activity['note']) ?></p><small><?= $activity['due_date'] ? 'Follow up: ' . htmlspecialchars($activity['due_date']) : 'No due date' ?></small></div><?php endforeach; ?></article></section>
+
+        <?php else: ?>
+            <section class="two-column"><article class="panel"><span class="eyebrow">WORKSPACE</span><h2>TechDecodes</h2><div class="setting-row"><span>Sender email</span><strong><?= SENDER_EMAIL ?></strong></div><div class="setting-row"><span>Lead storage</span><strong>Private Hostinger storage</strong></div><div class="setting-row"><span>Campaign limit</span><strong>25 recipients</strong></div></article><article class="panel"><span class="eyebrow">SECURITY</span><h2>Owner-only CRM</h2><p class="panel-note">The CRM is private, search engines are blocked, and your lead files are protected from direct web access.</p></article></section>
+        <?php endif; ?>
+    </main>
+</div>

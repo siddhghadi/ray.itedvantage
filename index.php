@@ -4,6 +4,9 @@ declare(strict_types=1);
 const OWNER_EMAIL = 'siddh.ghadi@gmail.com';
 const AUTH_FILE = __DIR__ . '/storage/auth.php';
 const LEADS_FILE = __DIR__ . '/storage/leads.json';
+const ACTIVITIES_FILE = __DIR__ . '/storage/activities.json';
+const CAMPAIGNS_FILE = __DIR__ . '/storage/campaigns.json';
+const SENDER_EMAIL = 'contact@techdecodes.com';
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Strict']);
@@ -52,6 +55,36 @@ function saveLeads(array $leads): void
         throw new RuntimeException('Could not save the leads file.');
     }
     @chmod(LEADS_FILE, 0640);
+}
+
+function loadJsonFile(string $file): array
+{
+    if (!is_file($file)) return [];
+    $decoded = json_decode((string) file_get_contents($file), true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function saveJsonFile(string $file, array $records): void
+{
+    $json = json_encode($records, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    $temporary = $file . '.tmp';
+    if (file_put_contents($temporary, $json, LOCK_EX) === false || !rename($temporary, $file)) {
+        @unlink($temporary);
+        throw new RuntimeException('Could not save your changes.');
+    }
+    @chmod($file, 0640);
+}
+
+function tdRedirect(string $page): never
+{
+    header('Location: ?business=techdecodes&page=' . rawurlencode($page));
+    exit;
+}
+
+function findLeadIndex(array $leads, string $id): ?int
+{
+    foreach ($leads as $index => $lead) if (hash_equals((string) ($lead['id'] ?? ''), $id)) return $index;
+    return null;
 }
 
 function importCsvLeads(string $path, array $existing): array
@@ -175,21 +208,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techdecodes' : 'home';
+$allowedPages = ['dashboard','leads','payments','revenue','email','activity','settings'];
+$tdPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $allowedPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 $notice = '';
-if ($isAuthenticated && isset($_POST['import_leads']) && validCsrf()) {
+if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
     try {
-        $file = $_FILES['lead_file'] ?? null;
-        if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 10 * 1024 * 1024) throw new RuntimeException('Choose a CSV file smaller than 10 MB.');
-        if (strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION)) !== 'csv') throw new RuntimeException('Export your sheet as CSV first.');
-        [$savedLeads, $added] = importCsvLeads((string) $file['tmp_name'], loadLeads());
-        saveLeads($savedLeads);
-        $_SESSION['notice'] = $added . ' new lead' . ($added === 1 ? '' : 's') . ' imported.';
-        header('Location: ?business=techdecodes#leads'); exit;
-    } catch (Throwable $importError) { $notice = $importError->getMessage(); }
+        $leadsForAction = loadLeads();
+        if (isset($_POST['import_leads'])) {
+            $file = $_FILES['lead_file'] ?? null;
+            if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 10 * 1024 * 1024) throw new RuntimeException('Choose a CSV file smaller than 10 MB.');
+            if (strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION)) !== 'csv') throw new RuntimeException('Export your sheet as CSV first.');
+            [$leadsForAction, $added] = importCsvLeads((string) $file['tmp_name'], $leadsForAction);
+            saveLeads($leadsForAction);
+            $_SESSION['notice'] = $added . ' new lead' . ($added === 1 ? '' : 's') . ' imported.';
+            tdRedirect('leads');
+        }
+        if (isset($_POST['update_status'])) {
+            $ids = array_map('strval', (array) ($_POST['lead_ids'] ?? []));
+            $status = (string) ($_POST['status'] ?? '');
+            if (!$ids || !in_array($status, ['new','pending','contacted','closed','lost'], true)) throw new RuntimeException('Select leads and a valid status.');
+            $updated = 0;
+            foreach ($leadsForAction as &$lead) if (in_array((string) ($lead['id'] ?? ''), $ids, true)) { $lead['status'] = $status; $lead['updated_at'] = gmdate('c'); $updated++; }
+            unset($lead);
+            saveLeads($leadsForAction);
+            $_SESSION['notice'] = $updated . ' lead status updated.';
+            tdRedirect('leads');
+        }
+        if (isset($_POST['save_payment'])) {
+            $leadId = (string) ($_POST['lead_id'] ?? '');
+            $index = findLeadIndex($leadsForAction, $leadId);
+            if ($index === null) throw new RuntimeException('Select a valid lead.');
+            $total = max(0, (float) ($_POST['total_value'] ?? 0));
+            $received = min($total, max(0, (float) ($_POST['amount_received'] ?? 0)));
+            $leadsForAction[$index]['total_value'] = $total;
+            $leadsForAction[$index]['amount_received'] = $received;
+            if ($total > 0) $leadsForAction[$index]['status'] = 'closed';
+            $leadsForAction[$index]['updated_at'] = gmdate('c');
+            saveLeads($leadsForAction);
+            $_SESSION['notice'] = 'Payment updated for ' . $leadsForAction[$index]['business'] . '.';
+            tdRedirect('payments');
+        }
+        if (isset($_POST['add_activity'])) {
+            $leadId = (string) ($_POST['lead_id'] ?? '');
+            $index = findLeadIndex($leadsForAction, $leadId);
+            $note = trim((string) ($_POST['note'] ?? ''));
+            if ($index === null || $note === '') throw new RuntimeException('Select a lead and add a note.');
+            $activities = loadJsonFile(ACTIVITIES_FILE);
+            array_unshift($activities, ['id' => bin2hex(random_bytes(8)), 'lead_id' => $leadId, 'business' => $leadsForAction[$index]['business'], 'note' => substr($note, 0, 500), 'due_date' => (string) ($_POST['due_date'] ?? ''), 'created_at' => gmdate('c')]);
+            saveJsonFile(ACTIVITIES_FILE, array_slice($activities, 0, 1000));
+            $_SESSION['notice'] = 'Activity added.';
+            tdRedirect('activity');
+        }
+        if (isset($_POST['send_campaign'])) {
+            $ids = array_slice(array_map('strval', (array) ($_POST['lead_ids'] ?? [])), 0, 25);
+            $subject = trim(str_replace(["\r","\n"], '', (string) ($_POST['subject'] ?? '')));
+            $message = trim((string) ($_POST['message'] ?? ''));
+            if (!$ids || $subject === '' || $message === '') throw new RuntimeException('Select recipients and complete the subject and message.');
+            $sent = 0; $failed = 0;
+            $headers = ['From: TechDecodes <' . SENDER_EMAIL . '>', 'Reply-To: ' . SENDER_EMAIL, 'Content-Type: text/plain; charset=UTF-8', 'X-Mailer: Ray CRM'];
+            foreach ($leadsForAction as $lead) {
+                if (!in_array((string) ($lead['id'] ?? ''), $ids, true) || !filter_var($lead['email'] ?? '', FILTER_VALIDATE_EMAIL)) continue;
+                $body = str_replace(['{{business}}','{{email}}'], [(string) $lead['business'], (string) $lead['email']], $message) . "\n\n— TechDecodes\n" . SENDER_EMAIL;
+                if (mail((string) $lead['email'], $subject, $body, implode("\r\n", $headers))) $sent++; else $failed++;
+            }
+            $campaigns = loadJsonFile(CAMPAIGNS_FILE);
+            array_unshift($campaigns, ['id' => bin2hex(random_bytes(8)), 'subject' => $subject, 'sent' => $sent, 'failed' => $failed, 'created_at' => gmdate('c'), 'sender' => SENDER_EMAIL]);
+            saveJsonFile(CAMPAIGNS_FILE, array_slice($campaigns, 0, 250));
+            $_SESSION['notice'] = $sent . ' email' . ($sent === 1 ? '' : 's') . ' sent' . ($failed ? '; ' . $failed . ' failed.' : '.');
+            tdRedirect('email');
+        }
+    } catch (Throwable $actionError) { $notice = $actionError->getMessage(); }
 }
 if (isset($_SESSION['notice'])) { $notice = (string) $_SESSION['notice']; unset($_SESSION['notice']); }
 $leads = $isAuthenticated ? loadLeads() : [];
 $leadCount = count($leads);
+$statusCounts = array_fill_keys(['new','pending','contacted','closed','lost'], 0);
+$totalRevenue = 0.0; $receivedRevenue = 0.0;
+foreach ($leads as &$lead) {
+    $lead += ['email'=>'','phone'=>'','website'=>'','address'=>'','category'=>'','status'=>'new','total_value'=>0,'amount_received'=>0];
+    if (isset($statusCounts[$lead['status']])) $statusCounts[$lead['status']]++;
+    $totalRevenue += (float) $lead['total_value']; $receivedRevenue += (float) $lead['amount_received'];
+}
+unset($lead);
+$pendingRevenue = max(0, $totalRevenue - $receivedRevenue);
+$activities = $isAuthenticated ? loadJsonFile(ACTIVITIES_FILE) : [];
+$campaigns = $isAuthenticated ? loadJsonFile(CAMPAIGNS_FILE) : [];
 ?>
 <!doctype html>
 <html lang="en">
@@ -230,6 +333,8 @@ $leadCount = count($leads);
     </main>
 <?php else: ?>
     <?php if ($view === 'techdecodes'): ?>
+        <?php require __DIR__ . '/views/techdecodes.php'; ?>
+        <?php if (false): ?>
         <div class="workspace-shell">
             <aside class="side-nav">
                 <a class="side-logo" href="./" aria-label="Ray CRM home">R</a>
@@ -291,6 +396,7 @@ $leadCount = count($leads);
                 </section>
             </main>
         </div>
+        <?php endif; ?>
     <?php else: ?>
         <header class="topbar">
             <a class="logo" href="./"><span>R</span> Ray CRM</a>

@@ -3,6 +3,10 @@ storage/auth.php
 storage/auth.php.tmp
 storage/leads.json
 storage/leads.json.tmp
+storage/activities.json
+storage/activities.json.tmp
+storage/campaigns.json
+storage/campaigns.json.tmp
 /.idea/
 /.vscode/
 /vendor/

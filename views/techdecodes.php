@@ -19,7 +19,7 @@ $nav = [
     <aside class="side-nav td-side-wide">
         <a class="side-logo ray-wordmark" href="./" aria-label="Ray CRM home">RAY</a>
         <nav aria-label="TechDecodes navigation">
-            <?php foreach ($nav as $key => [$icon,$label]): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&page=<?= $key ?>" title="<?= htmlspecialchars($label) ?>"><span><?= $icon ?></span><small><?= htmlspecialchars($label) ?></small></a><?php endforeach; ?>
+            <?php foreach ($nav as $key => [$icon,$label]): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&page=<?= $key ?>" title="<?= htmlspecialchars($label) ?>"><small><?= htmlspecialchars($label) ?></small></a><?php endforeach; ?>
         </nav>
         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch light and dark mode" title="Light / dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button>
         <a class="side-bottom" href="./" title="All businesses">⌘</a>

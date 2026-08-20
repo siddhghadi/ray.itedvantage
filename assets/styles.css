@@ -93,10 +93,12 @@ button:disabled { cursor:not-allowed; opacity:.72; }
 .delete-tools summary { padding:.45rem .6rem; color:#8d97aa; cursor:pointer; font-size:.72rem; list-style:none; }
 .delete-tools > div { position:absolute; z-index:5; right:0; top:100%; min-width:190px; padding:.65rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem; border:1px solid #ff526b30; border-radius:10px; background:#11182a; box-shadow:0 12px 28px #0008; }
 .delete-tools .danger-button { min-height:32px; padding:.4rem .55rem; font-size:.7rem; }
-.email-compose { width:min(880px,100%); margin:2rem auto 0; }
-.compose-panel { padding:clamp(1.25rem,3vw,2rem); }
+.email-compose { width:100%; max-width:100%; min-width:0; margin:2rem 0 0; display:grid; grid-template-columns:minmax(0,1fr); gap:1rem; }
+.compose-panel { width:100%; max-width:100%; min-width:0; padding:clamp(1.25rem,3vw,2rem); overflow:hidden; }
+.compose-panel .stack-form,.compose-panel input,.compose-panel select,.compose-panel textarea { width:100%; max-width:100%; min-width:0; }
+.compose-panel .panel-note { max-width:760px; }
 .send-button { min-height:50px; font-size:.95rem; }
-.campaign-history { margin-top:1rem; padding:0; overflow:hidden; }
+.campaign-history { width:100%; max-width:100%; min-width:0; margin-top:0; padding:0; overflow:hidden; }
 .campaign-history summary { padding:1rem 1.2rem; display:flex; justify-content:space-between; color:#dce1ef; cursor:pointer; font-weight:750; list-style:none; }
 .campaign-history summary span { padding:.15rem .45rem; border-radius:999px; color:#a995ff; background:#7952ff22; font-size:.72rem; }
 .history-content { padding:0 1.2rem 1rem; }
@@ -185,6 +187,9 @@ html[data-theme="light"] .delete-tools > div { background:#fff; }
   .metric-card strong { font-size:1.75rem; }
   .panel { padding:1rem; }
   .page-panel { margin-top:1.25rem; min-height:0; }
+  .email-compose { margin-top:1.25rem; }
+  .compose-panel { padding:1.25rem; }
+  .compose-panel textarea { min-height:220px; }
 }
 
 @media (max-width:780px) {

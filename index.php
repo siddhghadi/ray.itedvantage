@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 const OWNER_EMAIL = 'siddh.ghadi@gmail.com';
 const AUTH_FILE = __DIR__ . '/storage/auth.php';
+const LEADS_FILE = __DIR__ . '/storage/leads.json';
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Strict']);
@@ -33,6 +34,66 @@ function redirectHome(): never
 {
     header('Location: ./');
     exit;
+}
+
+function loadLeads(): array
+{
+    if (!is_file(LEADS_FILE)) return [];
+    $decoded = json_decode((string) file_get_contents(LEADS_FILE), true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function saveLeads(array $leads): void
+{
+    $json = json_encode($leads, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    $temporary = LEADS_FILE . '.tmp';
+    if (file_put_contents($temporary, $json, LOCK_EX) === false || !rename($temporary, LEADS_FILE)) {
+        @unlink($temporary);
+        throw new RuntimeException('Could not save the leads file.');
+    }
+    @chmod(LEADS_FILE, 0640);
+}
+
+function importCsvLeads(string $path, array $existing): array
+{
+    $handle = fopen($path, 'rb');
+    if ($handle === false) throw new RuntimeException('Could not read that CSV file.');
+    $header = fgetcsv($handle);
+    if (!$header) { fclose($handle); throw new RuntimeException('The CSV file is empty.'); }
+    $keys = array_map(static fn($value) => strtolower(trim(preg_replace('/[^a-z0-9]+/i', '_', (string) $value), '_')), $header);
+    $aliases = [
+        'business' => ['business_name','business','company','company_name','title','name','place_name'],
+        'email' => ['email','email_address','mail'],
+        'phone' => ['phone','phone_number','mobile','telephone','contact_number'],
+        'website' => ['website','site','domain','url'],
+        'address' => ['address','full_address','location'],
+        'category' => ['category','type','business_category','industry'],
+    ];
+    $columns = [];
+    foreach ($aliases as $field => $names) {
+        foreach ($names as $name) {
+            $position = array_search($name, $keys, true);
+            if ($position !== false) { $columns[$field] = $position; break; }
+        }
+    }
+    if (!isset($columns['business'])) { fclose($handle); throw new RuntimeException('Your CSV needs a Name, Business, Company, or Title column.'); }
+    $seen = [];
+    foreach ($existing as $lead) $seen[strtolower(($lead['email'] ?? '') . '|' . ($lead['phone'] ?? '') . '|' . ($lead['business'] ?? ''))] = true;
+    $added = 0;
+    while (($row = fgetcsv($handle)) !== false) {
+        $value = static fn(string $field): string => trim((string) ($row[$columns[$field] ?? -1] ?? ''));
+        $business = $value('business');
+        if ($business === '') continue;
+        $email = strtolower($value('email'));
+        $phone = $value('phone');
+        $dedupe = strtolower($email . '|' . $phone . '|' . $business);
+        if (isset($seen[$dedupe])) continue;
+        $existing[] = ['id' => bin2hex(random_bytes(8)), 'business' => $business, 'email' => $email, 'phone' => $phone, 'website' => $value('website'), 'address' => $value('address'), 'category' => $value('category'), 'status' => 'new', 'created_at' => gmdate('c')];
+        $seen[$dedupe] = true;
+        $added++;
+    }
+    fclose($handle);
+    return [$existing, $added];
 }
 
 $auth = authConfig();
@@ -114,6 +175,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techdecodes' : 'home';
+$notice = '';
+if ($isAuthenticated && isset($_POST['import_leads']) && validCsrf()) {
+    try {
+        $file = $_FILES['lead_file'] ?? null;
+        if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 10 * 1024 * 1024) throw new RuntimeException('Choose a CSV file smaller than 10 MB.');
+        if (strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION)) !== 'csv') throw new RuntimeException('Export your sheet as CSV first.');
+        [$savedLeads, $added] = importCsvLeads((string) $file['tmp_name'], loadLeads());
+        saveLeads($savedLeads);
+        $_SESSION['notice'] = $added . ' new lead' . ($added === 1 ? '' : 's') . ' imported.';
+        header('Location: ?business=techdecodes#leads'); exit;
+    } catch (Throwable $importError) { $notice = $importError->getMessage(); }
+}
+if (isset($_SESSION['notice'])) { $notice = (string) $_SESSION['notice']; unset($_SESSION['notice']); }
+$leads = $isAuthenticated ? loadLeads() : [];
+$leadCount = count($leads);
 ?>
 <!doctype html>
 <html lang="en">
@@ -175,7 +251,7 @@ $view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techd
                 </header>
 
                 <section class="metric-grid" aria-label="Lead overview">
-                    <article class="metric-card"><span>Total leads</span><strong>0</strong><small>Ready for your first import</small></article>
+                    <article class="metric-card"><span>Total leads</span><strong><?= $leadCount ?></strong><small><?= $leadCount ? 'Saved securely' : 'Ready for your first import' ?></small></article>
                     <article class="metric-card purple"><span>Pending follow-up</span><strong>0</strong><small>No pending leads</small></article>
                     <article class="metric-card green"><span>Total revenue</span><strong>₹0</strong><small>From closed leads</small></article>
                     <article class="metric-card orange"><span>Pending payment</span><strong>₹0</strong><small>Nothing outstanding</small></article>
@@ -183,9 +259,13 @@ $view = $isAuthenticated && ($_GET['business'] ?? '') === 'techdecodes' ? 'techd
 
                 <section class="td-grid">
                     <article class="panel leads-panel" id="leads">
-                        <div class="panel-heading"><div><span class="eyebrow">PIPELINE</span><h2>Leads</h2></div><button class="small-button" type="button" disabled>Upload sheet</button></div>
-                        <div class="stage-tabs"><span class="selected">All <b>0</b></span><span>New <b>0</b></span><span>Pending <b>0</b></span><span>Contacted <b>0</b></span><span>Closed <b>0</b></span></div>
-                        <div class="empty-state"><div class="upload-icon">⇧</div><h3>Import your first lead sheet</h3><p>CSV and Excel uploads will create leads and separate them by status.</p><button class="primary-button" type="button" disabled>Upload spreadsheet</button></div>
+                        <div class="panel-heading"><div><span class="eyebrow">PIPELINE</span><h2>Leads</h2></div><span class="soft-badge"><?= $leadCount ?> saved</span></div>
+                        <?php if ($notice !== ''): ?><div class="td-notice"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
+                        <div class="stage-tabs"><span class="selected">All <b><?= $leadCount ?></b></span><span>New <b><?= $leadCount ?></b></span><span>Pending <b>0</b></span><span>Contacted <b>0</b></span><span>Closed <b>0</b></span></div>
+                        <form class="lead-upload" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><input id="lead-file" type="file" name="lead_file" accept=".csv,text/csv" required><label class="small-button" for="lead-file">Choose CSV</label><button class="primary-button" type="submit" name="import_leads" value="1">Upload leads</button></form>
+                        <?php if (!$leads): ?><div class="empty-state"><div class="upload-icon">⇧</div><h3>Import your first lead sheet</h3><p>Export Google Sheets or Excel as CSV, then upload it here.</p></div><?php else: ?>
+                        <div class="lead-table-wrap"><table class="lead-table"><thead><tr><th>Business</th><th>Contact</th><th>Status</th><th>Call</th></tr></thead><tbody><?php foreach (array_reverse($leads) as $lead): ?><tr><td><strong><?= htmlspecialchars((string) $lead['business']) ?></strong><small><?= htmlspecialchars((string) ($lead['category'] ?: ($lead['website'] ?: '—'))) ?></small></td><td><?= htmlspecialchars((string) ($lead['email'] ?: 'No email')) ?><small><?= htmlspecialchars((string) ($lead['phone'] ?: 'No phone')) ?></small></td><td><span class="lead-status new">New</span></td><td><?= $lead['phone'] ? '<a class="call-link" href="tel:' . htmlspecialchars(preg_replace('/[^0-9+]/', '', (string) $lead['phone'])) . '">Call</a>' : '—' ?></td></tr><?php endforeach; ?></tbody></table></div>
+                        <?php endif; ?>
                     </article>
 
                     <article class="panel quick-panel" id="activity">

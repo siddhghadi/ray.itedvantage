@@ -1,6 +1,8 @@
 .env
 storage/auth.php
 storage/auth.php.tmp
+storage/leads.json
+storage/leads.json.tmp
 /.idea/
 /.vscode/
 /vendor/

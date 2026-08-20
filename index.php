@@ -234,6 +234,18 @@ if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] ==
             $_SESSION['notice'] = $updated . ' lead status updated.';
             tdRedirect('leads');
         }
+        if (isset($_POST['delete_leads'])) {
+            $ids = array_values(array_filter(array_map('strval', (array) ($_POST['lead_ids'] ?? []))));
+            if (!$ids) throw new RuntimeException('Select at least one lead to delete.');
+            if (($_POST['confirm_delete'] ?? '') !== 'yes') throw new RuntimeException('Tick the delete confirmation before removing leads.');
+            $before = count($leadsForAction);
+            $leadsForAction = array_values(array_filter($leadsForAction, static fn(array $lead): bool => !in_array((string) ($lead['id'] ?? ''), $ids, true)));
+            saveLeads($leadsForAction);
+            $activitiesForAction = array_values(array_filter(loadJsonFile(ACTIVITIES_FILE), static fn(array $activity): bool => !in_array((string) ($activity['lead_id'] ?? ''), $ids, true)));
+            saveJsonFile(ACTIVITIES_FILE, $activitiesForAction);
+            $_SESSION['notice'] = ($before - count($leadsForAction)) . ' lead' . (($before - count($leadsForAction)) === 1 ? '' : 's') . ' deleted.';
+            tdRedirect('leads');
+        }
         if (isset($_POST['save_payment'])) {
             $leadId = (string) ($_POST['lead_id'] ?? '');
             $index = findLeadIndex($leadsForAction, $leadId);
@@ -260,19 +272,24 @@ if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] ==
             tdRedirect('activity');
         }
         if (isset($_POST['send_campaign'])) {
-            $ids = array_slice(array_map('strval', (array) ($_POST['lead_ids'] ?? [])), 0, 25);
+            $recipientCategory = trim((string) ($_POST['recipient_category'] ?? ''));
             $subject = trim(str_replace(["\r","\n"], '', (string) ($_POST['subject'] ?? '')));
             $message = trim((string) ($_POST['message'] ?? ''));
-            if (!$ids || $subject === '' || $message === '') throw new RuntimeException('Select recipients and complete the subject and message.');
+            if ($recipientCategory === '' || $subject === '' || $message === '') throw new RuntimeException('Choose a category and complete the subject and message.');
+            $recipients = array_values(array_filter($leadsForAction, static function (array $lead) use ($recipientCategory): bool {
+                $category = trim((string) ($lead['category'] ?? '')) ?: 'Uncategorized';
+                return ($recipientCategory === '__all__' || strcasecmp($category, $recipientCategory) === 0) && filter_var($lead['email'] ?? '', FILTER_VALIDATE_EMAIL);
+            }));
+            if (!$recipients) throw new RuntimeException('No valid email addresses found in that category.');
+            if (count($recipients) > 25) throw new RuntimeException('This category has more than 25 email leads. Filter it into a smaller category before sending.');
             $sent = 0; $failed = 0;
             $headers = ['From: TechDecodes <' . SENDER_EMAIL . '>', 'Reply-To: ' . SENDER_EMAIL, 'Content-Type: text/plain; charset=UTF-8', 'X-Mailer: Ray CRM'];
-            foreach ($leadsForAction as $lead) {
-                if (!in_array((string) ($lead['id'] ?? ''), $ids, true) || !filter_var($lead['email'] ?? '', FILTER_VALIDATE_EMAIL)) continue;
+            foreach ($recipients as $lead) {
                 $body = str_replace(['{{business}}','{{email}}'], [(string) $lead['business'], (string) $lead['email']], $message) . "\n\n— TechDecodes\n" . SENDER_EMAIL;
                 if (mail((string) $lead['email'], $subject, $body, implode("\r\n", $headers))) $sent++; else $failed++;
             }
             $campaigns = loadJsonFile(CAMPAIGNS_FILE);
-            array_unshift($campaigns, ['id' => bin2hex(random_bytes(8)), 'subject' => $subject, 'sent' => $sent, 'failed' => $failed, 'created_at' => gmdate('c'), 'sender' => SENDER_EMAIL]);
+            array_unshift($campaigns, ['id' => bin2hex(random_bytes(8)), 'subject' => $subject, 'category' => $recipientCategory === '__all__' ? 'All categories' : $recipientCategory, 'sent' => $sent, 'failed' => $failed, 'created_at' => gmdate('c'), 'sender' => SENDER_EMAIL]);
             saveJsonFile(CAMPAIGNS_FILE, array_slice($campaigns, 0, 250));
             $_SESSION['notice'] = $sent . ' email' . ($sent === 1 ? '' : 's') . ' sent' . ($failed ? '; ' . $failed . ' failed.' : '.');
             tdRedirect('email');
@@ -293,6 +310,14 @@ unset($lead);
 $pendingRevenue = max(0, $totalRevenue - $receivedRevenue);
 $activities = $isAuthenticated ? loadJsonFile(ACTIVITIES_FILE) : [];
 $campaigns = $isAuthenticated ? loadJsonFile(CAMPAIGNS_FILE) : [];
+$categoryCounts = [];
+foreach ($leads as $lead) {
+    $category = trim((string) ($lead['category'] ?? '')) ?: 'Uncategorized';
+    $categoryCounts[$category] = ($categoryCounts[$category] ?? 0) + 1;
+}
+uksort($categoryCounts, 'strnatcasecmp');
+$categoryFilter = trim((string) ($_GET['category'] ?? ''));
+$filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($leads, static fn(array $lead): bool => strcasecmp(trim((string) ($lead['category'] ?? '')) ?: 'Uncategorized', $categoryFilter) === 0));
 ?>
 <!doctype html>
 <html lang="en">

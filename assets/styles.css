@@ -82,6 +82,21 @@ button:disabled { cursor:not-allowed; opacity:.72; }
 .activity-row { padding:1rem 0; border-bottom:1px solid #ffffff0d; }
 .activity-row p { margin:.4rem 0; color:#adb6ca; line-height:1.5; }
 .lead-status.pending { color:#ffc46c; background:#ff9a311c; } .lead-status.contacted { color:#6fdbff; background:#259edb1c; } .lead-status.closed { color:#65e4b6; background:#32c9921c; } .lead-status.lost { color:#ff8c9d; background:#ff526b1c; }
+.category-filter { display:flex; align-items:end; gap:.65rem; margin:1rem 0; }
+.category-filter label { margin:0; color:#9da7bc; }
+.category-filter select { min-width:240px; min-height:42px; padding:.65rem .75rem; border:1px solid #ffffff16; border-radius:9px; color:#edf0fa; background:#ffffff08; }
+.category-filter select option { color:#172033; background:white; }
+.danger-button { min-height:42px; padding:.7rem 1rem; border:1px solid #ff526b55; border-radius:10px; color:#ff9baa; background:#ff526b18; font-weight:750; cursor:pointer; }
+.delete-confirm { margin:0; display:flex; align-items:center; gap:.4rem; color:#aeb7c9; font-size:.75rem; white-space:nowrap; }
+.delete-confirm input { width:17px; min-height:17px; accent-color:#ff526b; }
+.email-compose { width:min(880px,100%); margin:2rem auto 0; }
+.compose-panel { padding:clamp(1.25rem,3vw,2rem); }
+.send-button { min-height:50px; font-size:.95rem; }
+.campaign-history { margin-top:1rem; padding:0; overflow:hidden; }
+.campaign-history summary { padding:1rem 1.2rem; display:flex; justify-content:space-between; color:#dce1ef; cursor:pointer; font-weight:750; list-style:none; }
+.campaign-history summary span { padding:.15rem .45rem; border-radius:999px; color:#a995ff; background:#7952ff22; font-size:.72rem; }
+.history-content { padding:0 1.2rem 1rem; }
+.empty-state.compact { min-height:220px; }
 code { color:#c8b9ff; }
 @media (max-width:900px) { .two-column { grid-template-columns:minmax(0,1fr); } }
 @media (max-width:780px) {
@@ -98,4 +113,7 @@ code { color:#c8b9ff; }
   .lead-upload,.bulk-bar { align-items:stretch; flex-direction:column; }
   .lead-upload label,.lead-upload button,.bulk-bar button { width:100%; text-align:center; }
   .email-layout .sender-pill { display:none; }
+  .category-filter { align-items:stretch; flex-direction:column; }
+  .category-filter select,.category-filter button { width:100%; }
+  .delete-confirm { padding:.35rem 0; }
 }

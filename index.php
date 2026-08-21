@@ -102,6 +102,23 @@ function normalizedLeadPhone(string $phone): string
     return strlen($digits) > 10 ? substr($digits, -10) : $digits;
 }
 
+function whatsappCandidatePhone(string $phone): string
+{
+    $raw = trim($phone);
+    $digits = preg_replace('/\D+/', '', $raw) ?? '';
+    if ($digits === '') return '';
+
+    if (strlen($digits) === 12 && str_starts_with($digits, '91')) $digits = substr($digits, 2);
+    if (strlen($digits) === 11 && str_starts_with($digits, '0')) $digits = substr($digits, 1);
+    if (strlen($digits) === 10) {
+        return preg_match('/^[6-9]/', $digits) ? '+91' . $digits : '';
+    }
+
+    // Preserve clearly international numbers; availability on WhatsApp is checked when opened.
+    if (str_starts_with($raw, '+') && strlen($digits) >= 8 && strlen($digits) <= 15 && !str_starts_with($digits, '91')) return '+' . $digits;
+    return '';
+}
+
 function importCsvLeads(string $path, array $existing): array
 {
     $handle = fopen($path, 'rb');
@@ -138,7 +155,7 @@ function importCsvLeads(string $path, array $existing): array
         $business = $value('business');
         if ($business === '') continue;
         $email = strtolower($value('email'));
-        $phone = $value('phone');
+        $phone = whatsappCandidatePhone($value('phone'));
         $emailKey = normalizedLeadEmail($email);
         $phoneKey = normalizedLeadPhone($phone);
         if (($emailKey !== '' && isset($seenEmails[$emailKey])) || ($phoneKey !== '' && isset($seenPhones[$phoneKey]))) { $duplicates++; continue; }
@@ -336,6 +353,23 @@ if ($isAuthenticated && in_array($view, ['techdecodes','itedvantage'], true) && 
     } catch (Throwable $calendarError) { $notice = $calendarError->getMessage(); }
 }
 $leads = $isAuthenticated ? loadLeads() : [];
+$cleanedPhoneCount = 0;
+if ($isAuthenticated && $leads) {
+    foreach ($leads as &$leadToClean) {
+        $originalPhone = trim((string) ($leadToClean['phone'] ?? ''));
+        $cleanPhone = whatsappCandidatePhone($originalPhone);
+        if ($originalPhone !== $cleanPhone) { $leadToClean['phone'] = $cleanPhone; $cleanedPhoneCount++; }
+    }
+    unset($leadToClean);
+    if ($cleanedPhoneCount > 0) {
+        try {
+            saveLeads($leads);
+            if ($notice === '') $notice = $cleanedPhoneCount . ' phone number' . ($cleanedPhoneCount === 1 ? '' : 's') . ' cleaned; obvious landlines were left blank.';
+        } catch (Throwable $cleanupError) {
+            if ($notice === '') $notice = 'Phone cleanup could not be saved yet.';
+        }
+    }
+}
 $leadCount = count($leads);
 $statusCounts = array_fill_keys(['new','pending','contacted','closed','lost'], 0);
 $totalRevenue = 0.0; $receivedRevenue = 0.0;

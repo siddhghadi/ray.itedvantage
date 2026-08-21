@@ -89,6 +89,19 @@ function findLeadIndex(array $leads, string $id): ?int
     return null;
 }
 
+function normalizedLeadEmail(string $email): string
+{
+    $email = strtolower(trim($email));
+    return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
+}
+
+function normalizedLeadPhone(string $phone): string
+{
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+    if (strlen($digits) < 7) return '';
+    return strlen($digits) > 10 ? substr($digits, -10) : $digits;
+}
+
 function importCsvLeads(string $path, array $existing): array
 {
     $handle = fopen($path, 'rb');
@@ -112,23 +125,31 @@ function importCsvLeads(string $path, array $existing): array
         }
     }
     if (!isset($columns['business'])) { fclose($handle); throw new RuntimeException('Your CSV needs a Name, Business, Company, or Title column.'); }
-    $seen = [];
-    foreach ($existing as $lead) $seen[strtolower(($lead['email'] ?? '') . '|' . ($lead['phone'] ?? '') . '|' . ($lead['business'] ?? ''))] = true;
-    $added = 0;
+    $seenEmails = []; $seenPhones = [];
+    foreach ($existing as $lead) {
+        $knownEmail = normalizedLeadEmail((string) ($lead['email'] ?? ''));
+        $knownPhone = normalizedLeadPhone((string) ($lead['phone'] ?? ''));
+        if ($knownEmail !== '') $seenEmails[$knownEmail] = true;
+        if ($knownPhone !== '') $seenPhones[$knownPhone] = true;
+    }
+    $added = 0; $duplicates = 0;
     while (($row = fgetcsv($handle)) !== false) {
         $value = static fn(string $field): string => trim((string) ($row[$columns[$field] ?? -1] ?? ''));
         $business = $value('business');
         if ($business === '') continue;
         $email = strtolower($value('email'));
         $phone = $value('phone');
-        $dedupe = strtolower($email . '|' . $phone . '|' . $business);
-        if (isset($seen[$dedupe])) continue;
-        $existing[] = ['id' => bin2hex(random_bytes(8)), 'business' => $business, 'email' => $email, 'phone' => $phone, 'website' => $value('website'), 'address' => $value('address'), 'category' => $value('category'), 'status' => 'new', 'created_at' => gmdate('c')];
-        $seen[$dedupe] = true;
+        $emailKey = normalizedLeadEmail($email);
+        $phoneKey = normalizedLeadPhone($phone);
+        if (($emailKey !== '' && isset($seenEmails[$emailKey])) || ($phoneKey !== '' && isset($seenPhones[$phoneKey]))) { $duplicates++; continue; }
+        $createdAt = gmdate('c');
+        $existing[] = ['id' => bin2hex(random_bytes(8)), 'business' => $business, 'email' => $email, 'phone' => $phone, 'website' => $value('website'), 'address' => $value('address'), 'category' => $value('category'), 'status' => 'new', 'created_at' => $createdAt, 'status_changed_at' => $createdAt];
+        if ($emailKey !== '') $seenEmails[$emailKey] = true;
+        if ($phoneKey !== '') $seenPhones[$phoneKey] = true;
         $added++;
     }
     fclose($handle);
-    return [$existing, $added];
+    return [$existing, $added, $duplicates];
 }
 
 $auth = authConfig();
@@ -221,9 +242,9 @@ if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] ==
             $file = $_FILES['lead_file'] ?? null;
             if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 10 * 1024 * 1024) throw new RuntimeException('Choose a CSV file smaller than 10 MB.');
             if (strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION)) !== 'csv') throw new RuntimeException('Export your sheet as CSV first.');
-            [$leadsForAction, $added] = importCsvLeads((string) $file['tmp_name'], $leadsForAction);
+            [$leadsForAction, $added, $duplicates] = importCsvLeads((string) $file['tmp_name'], $leadsForAction);
             saveLeads($leadsForAction);
-            $_SESSION['notice'] = $added . ' new lead' . ($added === 1 ? '' : 's') . ' imported.';
+            $_SESSION['notice'] = $added . ' new lead' . ($added === 1 ? '' : 's') . ' imported' . ($duplicates ? '; ' . $duplicates . ' duplicate' . ($duplicates === 1 ? '' : 's') . ' skipped by phone/email.' : '.');
             tdRedirect('leads');
         }
         if (isset($_POST['update_status'])) {
@@ -231,7 +252,7 @@ if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] ==
             $status = (string) ($_POST['status'] ?? '');
             if (!$ids || !in_array($status, ['new','pending','contacted','closed','lost'], true)) throw new RuntimeException('Select leads and a valid status.');
             $updated = 0;
-            foreach ($leadsForAction as &$lead) if (in_array((string) ($lead['id'] ?? ''), $ids, true)) { $lead['status'] = $status; $lead['updated_at'] = gmdate('c'); $updated++; }
+            foreach ($leadsForAction as &$lead) if (in_array((string) ($lead['id'] ?? ''), $ids, true)) { if (($lead['status'] ?? 'new') !== $status) $lead['status_changed_at'] = gmdate('c'); $lead['status'] = $status; $lead['updated_at'] = gmdate('c'); $updated++; }
             unset($lead);
             saveLeads($leadsForAction);
             $_SESSION['notice'] = $updated . ' lead status updated.';
@@ -326,6 +347,11 @@ foreach ($leads as &$lead) {
 unset($lead);
 $pendingRevenue = max(0, $totalRevenue - $receivedRevenue);
 $activities = $isAuthenticated ? loadJsonFile(ACTIVITIES_FILE) : [];
+$today = date('Y-m-d');
+$overdueActivities = array_values(array_filter($activities, static fn(array $activity): bool => ($activity['due_date'] ?? '') !== '' && (string) $activity['due_date'] < date('Y-m-d')));
+$todayActivities = array_values(array_filter($activities, static fn(array $activity): bool => (string) ($activity['due_date'] ?? '') === date('Y-m-d')));
+$upcomingActivities = array_values(array_filter($activities, static fn(array $activity): bool => (string) ($activity['due_date'] ?? '') > date('Y-m-d')));
+$pendingFollowups = count($overdueActivities) + count($todayActivities);
 $campaigns = $isAuthenticated ? loadJsonFile(CAMPAIGNS_FILE) : [];
 $categoryCounts = [];
 foreach ($leads as $lead) {

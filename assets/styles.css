@@ -308,6 +308,21 @@ html[data-theme="light"] .desktop-menu > div a:hover,html[data-theme="light"] .d
 }
 @media (max-width:780px) { .desktop-menu { display:none; } }
 
+.reminder-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin:1.5rem 0 1rem; }
+.lead-quick-actions { display:flex; flex-wrap:wrap; gap:.35rem; }
+.lead-quick-actions a { padding:.42rem .58rem; border:1px solid #faa61d35; border-radius:7px; color:#faa61d; background:#faa61d0d; text-decoration:none; font-size:.68rem; font-weight:800; }
+.activity-row.overdue { margin-inline:-.5rem; padding-inline:.5rem; border-left:3px solid #e45b4f; background:#e45b4f0c; }
+.activity-row.due-today { margin-inline:-.5rem; padding-inline:.5rem; border-left:3px solid #faa61d; background:#faa61d0c; }
+html[data-theme="light"] .lead-quick-actions a { color:#7b4b00; border-color:#d7aa55; background:#fff4dc; }
+@media (max-width:780px) {
+  .reminder-grid { grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:1rem; }
+  .reminder-grid .metric-card { min-height:auto; padding:.75rem; }
+  .reminder-grid .metric-card strong { font-size:1.65rem; }
+  .reminder-grid .metric-card small { font-size:.58rem; }
+  .lead-quick-actions { min-width:150px; }
+  .lead-quick-actions a { flex:1; min-width:68px; text-align:center; }
+}
+
 /* Shared monthly content calendars */
 .calendar-layout { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:1rem; margin-top:1.5rem; align-items:start; }
 .calendar-main,.calendar-add { min-width:0; }

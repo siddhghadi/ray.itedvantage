@@ -7,6 +7,9 @@ const LEADS_FILE = __DIR__ . '/storage/leads.json';
 const ACTIVITIES_FILE = __DIR__ . '/storage/activities.json';
 const CAMPAIGNS_FILE = __DIR__ . '/storage/campaigns.json';
 const CONTENT_CALENDAR_FILE = __DIR__ . '/storage/content-calendar.json';
+const RANGOLI_PRODUCTS_FILE = __DIR__ . '/storage/rangoli-products.json';
+const RANGOLI_CONTACTS_FILE = __DIR__ . '/storage/rangoli-contacts.json';
+const RANGOLI_ORDERS_FILE = __DIR__ . '/storage/rangoli-orders.json';
 const SENDER_EMAIL = 'contact@techdecodes.com';
 const OWNER_CALLING_NUMBER = '+91 7039636906';
 
@@ -80,6 +83,12 @@ function saveJsonFile(string $file, array $records): void
 function tdRedirect(string $page): never
 {
     header('Location: ?business=techdecodes&page=' . rawurlencode($page));
+    exit;
+}
+
+function rangoliRedirect(string $page): never
+{
+    header('Location: ?business=rangoli&page=' . rawurlencode($page));
     exit;
 }
 
@@ -248,7 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $requestedBusiness = (string) ($_GET['business'] ?? '');
-$view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage'], true) ? $requestedBusiness : 'home';
+$view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli'], true) ? $requestedBusiness : 'home';
 $allowedPages = ['dashboard','leads','payments','revenue','email','activity','calendar','settings'];
 $tdPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $allowedPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 $notice = '';
@@ -338,6 +347,55 @@ if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] ==
     } catch (Throwable $actionError) { $notice = $actionError->getMessage(); }
 }
 if (isset($_SESSION['notice'])) { $notice = (string) $_SESSION['notice']; unset($_SESSION['notice']); }
+$rangoliPage = in_array((string) ($_GET['page'] ?? 'dashboard'), ['dashboard','products','contacts','orders','payments'], true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
+if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
+    try {
+        $productsForAction = loadJsonFile(RANGOLI_PRODUCTS_FILE);
+        $contactsForAction = loadJsonFile(RANGOLI_CONTACTS_FILE);
+        $ordersForAction = loadJsonFile(RANGOLI_ORDERS_FILE);
+        if (isset($_POST['add_product'])) {
+            $name = trim((string) ($_POST['name'] ?? ''));
+            $retail = max(0, (float) ($_POST['retail_price'] ?? 0));
+            $dealer = max(0, (float) ($_POST['dealer_price'] ?? 0));
+            if ($name === '' || $retail <= 0) throw new RuntimeException('Add a product name and retail price.');
+            if ($dealer > $retail) throw new RuntimeException('Dealer price cannot be higher than retail price.');
+            array_unshift($productsForAction, ['id'=>bin2hex(random_bytes(8)), 'name'=>substr($name,0,120), 'sku'=>substr(trim((string)($_POST['sku']??'')),0,50), 'cost_price'=>max(0,(float)($_POST['cost_price']??0)), 'retail_price'=>$retail, 'dealer_price'=>$dealer, 'stock'=>max(0,(int)($_POST['stock']??0)), 'low_stock'=>max(0,(int)($_POST['low_stock']??3)), 'created_at'=>gmdate('c')]);
+            saveJsonFile(RANGOLI_PRODUCTS_FILE, $productsForAction); $_SESSION['notice']='Product added.'; rangoliRedirect('products');
+        }
+        if (isset($_POST['adjust_stock'])) {
+            $productId=(string)($_POST['product_id']??''); $change=(int)($_POST['stock_change']??0); $found=false;
+            foreach($productsForAction as &$product) if(hash_equals((string)$product['id'],$productId)){ $product['stock']=max(0,(int)$product['stock']+$change); $found=true; break; } unset($product);
+            if(!$found || $change===0) throw new RuntimeException('Select a product and enter a stock change.');
+            saveJsonFile(RANGOLI_PRODUCTS_FILE,$productsForAction); $_SESSION['notice']='Stock updated.'; rangoliRedirect('products');
+        }
+        if (isset($_POST['add_contact'])) {
+            $name=trim((string)($_POST['name']??'')); $type=(string)($_POST['type']??'customer');
+            if($name==='' || !in_array($type,['customer','dealer','partner'],true)) throw new RuntimeException('Add a valid name and contact type.');
+            array_unshift($contactsForAction,['id'=>bin2hex(random_bytes(8)),'name'=>substr($name,0,120),'type'=>$type,'phone'=>whatsappCandidatePhone((string)($_POST['phone']??'')),'address'=>substr(trim((string)($_POST['address']??'')),0,300),'discount'=>min(100,max(0,(float)($_POST['discount']??0))),'created_at'=>gmdate('c')]);
+            saveJsonFile(RANGOLI_CONTACTS_FILE,$contactsForAction); $_SESSION['notice']=ucfirst($type).' added.'; rangoliRedirect('contacts');
+        }
+        if (isset($_POST['create_order'])) {
+            $productId=(string)($_POST['product_id']??''); $contactId=(string)($_POST['contact_id']??''); $quantity=max(1,(int)($_POST['quantity']??1));
+            $productIndex=null; foreach($productsForAction as $i=>$product) if(hash_equals((string)$product['id'],$productId)){$productIndex=$i;break;}
+            $contact=null; foreach($contactsForAction as $candidate) if(hash_equals((string)$candidate['id'],$contactId)){$contact=$candidate;break;}
+            if($productIndex===null || $contact===null) throw new RuntimeException('Select a valid product and buyer.');
+            if((int)$productsForAction[$productIndex]['stock']<$quantity) throw new RuntimeException('Not enough stock for this order.');
+            $channel=($contact['type']??'customer')==='dealer'?'dealer':'retail';
+            $basePrice=(float)$productsForAction[$productIndex][$channel==='dealer'?'dealer_price':'retail_price'];
+            if($basePrice<=0) $basePrice=(float)$productsForAction[$productIndex]['retail_price'];
+            $manualPrice=(float)($_POST['unit_price']??0); $unitPrice=$manualPrice>0?$manualPrice:$basePrice;
+            $total=$unitPrice*$quantity; $paid=min($total,max(0,(float)($_POST['paid']??0)));
+            $productsForAction[$productIndex]['stock']=(int)$productsForAction[$productIndex]['stock']-$quantity;
+            array_unshift($ordersForAction,['id'=>bin2hex(random_bytes(8)),'contact_id'=>$contactId,'contact_name'=>$contact['name'],'contact_phone'=>$contact['phone']??'','channel'=>$channel,'product_id'=>$productId,'product_name'=>$productsForAction[$productIndex]['name'],'quantity'=>$quantity,'unit_price'=>$unitPrice,'total'=>$total,'paid'=>$paid,'status'=>'new','created_at'=>gmdate('c')]);
+            saveJsonFile(RANGOLI_PRODUCTS_FILE,$productsForAction); saveJsonFile(RANGOLI_ORDERS_FILE,$ordersForAction); $_SESSION['notice']='Order created and stock reduced.'; rangoliRedirect('orders');
+        }
+        if (isset($_POST['update_order'])) {
+            $orderId=(string)($_POST['order_id']??''); $status=(string)($_POST['status']??''); $found=false;
+            foreach($ordersForAction as &$order) if(hash_equals((string)$order['id'],$orderId)){ if(!in_array($status,['new','preparing','ready','dispatched','delivered','cancelled'],true)) throw new RuntimeException('Choose a valid order status.'); $order['status']=$status; $order['paid']=min((float)$order['total'],max(0,(float)($_POST['paid']??$order['paid']))); $order['updated_at']=gmdate('c'); $found=true; break; } unset($order);
+            if(!$found) throw new RuntimeException('Order not found.'); saveJsonFile(RANGOLI_ORDERS_FILE,$ordersForAction); $_SESSION['notice']='Order updated.'; rangoliRedirect('orders');
+        }
+    } catch(Throwable $rangoliError) { $notice=$rangoliError->getMessage(); }
+}
 $calendarItems = $isAuthenticated ? loadJsonFile(CONTENT_CALENDAR_FILE) : [];
 if ($isAuthenticated && in_array($view, ['techdecodes','itedvantage'], true) && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf() && isset($_POST['add_calendar_item'])) {
     try {
@@ -387,6 +445,9 @@ $todayActivities = array_values(array_filter($activities, static fn(array $activ
 $upcomingActivities = array_values(array_filter($activities, static fn(array $activity): bool => (string) ($activity['due_date'] ?? '') > date('Y-m-d')));
 $pendingFollowups = count($overdueActivities) + count($todayActivities);
 $campaigns = $isAuthenticated ? loadJsonFile(CAMPAIGNS_FILE) : [];
+$rangoliProducts = $isAuthenticated ? loadJsonFile(RANGOLI_PRODUCTS_FILE) : [];
+$rangoliContacts = $isAuthenticated ? loadJsonFile(RANGOLI_CONTACTS_FILE) : [];
+$rangoliOrders = $isAuthenticated ? loadJsonFile(RANGOLI_ORDERS_FILE) : [];
 $categoryCounts = [];
 foreach ($leads as $lead) {
     $category = trim((string) ($lead['category'] ?? '')) ?: 'Uncategorized';
@@ -502,6 +563,8 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
         <?php endif; ?>
     <?php elseif ($view === 'itedvantage'): ?>
         <?php require __DIR__ . '/views/itedvantage.php'; ?>
+    <?php elseif ($view === 'rangoli'): ?>
+        <?php require __DIR__ . '/views/rangoli.php'; ?>
     <?php else: ?>
         <header class="topbar">
             <a class="logo" href="./"><span>R</span> Ray CRM</a>
@@ -512,7 +575,7 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
             <section class="business-grid" aria-label="Businesses">
                 <a class="business-card tech" href="?business=techdecodes"><span class="card-icon">TD</span><div><h2>TechDecodes</h2><p>Digital marketing</p></div><span class="status">Open workspace →</span></a>
                 <a class="business-card it" href="?business=itedvantage"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Blogs & digital products</p></div><span class="status">Open workspace →</span></a>
-                <article class="business-card wool"><span class="card-icon">WR</span><div><h2>Woolen Rangoli</h2><p>Products & orders</p></div><span class="status">Planned</span></article>
+                <a class="business-card wool" href="?business=rangoli"><span class="card-icon">WR</span><div><h2>Woollen Rangoli</h2><p>Products, dealers & orders</p></div><span class="status">Open workspace →</span></a>
             </section>
         </main>
     <?php endif; ?>

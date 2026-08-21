@@ -138,6 +138,20 @@ code { color:#c8b9ff; }
   .campaign-history summary { padding:.9rem 1rem; }
   .setting-row { align-items:flex-start; flex-direction:column; gap:.25rem; }
 }
+
+/* Woollen Rangoli workspace */
+.rangoli-workspace .td-header h1 { max-width:900px; }
+.rangoli-contact { padding:.85rem 0; display:flex; align-items:center; justify-content:space-between; gap:1rem; border-bottom:1px solid #ffffff0d; }
+.rangoli-contact > div:first-child { display:grid; gap:.2rem; }
+.rangoli-contact small { color:#7e8798; }
+.stock-low { padding:.28rem .45rem; border-radius:6px; color:#ff9d88; background:#e45b4f18; font-weight:850; }
+html[data-theme="light"] .rangoli-contact { border-color:#35415b12; }
+html[data-theme="light"] .rangoli-contact small { color:#6b6458; }
+html[data-theme="light"] .stock-low { color:#a62d1f; background:#ffe8e3; }
+@media (max-width:780px) {
+  .rangoli-contact { align-items:flex-start; flex-direction:column; }
+  .rangoli-contact .lead-quick-actions { width:100%; }
+}
 @media (max-width:420px) {
   .td-dashboard { padding:.8rem; }
   .metric-grid { grid-template-columns:1fr 1fr; gap:.55rem; }

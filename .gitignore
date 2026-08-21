@@ -8,6 +8,9 @@ storage/activities.json.tmp
 storage/campaigns.json
 storage/campaigns.json.tmp
 storage/content-calendar.json
+storage/rangoli-products.json
+storage/rangoli-contacts.json
+storage/rangoli-orders.json
 storage/content-calendar.json.tmp
 /.idea/
 /.vscode/

@@ -12,6 +12,7 @@ const RANGOLI_CONTACTS_FILE = __DIR__ . '/storage/rangoli-contacts.json';
 const RANGOLI_ORDERS_FILE = __DIR__ . '/storage/rangoli-orders.json';
 const SENDER_EMAIL = 'contact@techdecodes.com';
 const OWNER_CALLING_NUMBER = '+91 7039636906';
+require_once __DIR__ . '/views/rangoli-product-functions.php';
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Strict']);
@@ -348,11 +349,21 @@ if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] ==
 }
 if (isset($_SESSION['notice'])) { $notice = (string) $_SESSION['notice']; unset($_SESSION['notice']); }
 $rangoliPage = in_array((string) ($_GET['page'] ?? 'dashboard'), ['dashboard','products','contacts','orders','payments'], true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
+if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'POST' && !validCsrf()) $notice = 'Your session expired. Please reload the page and try again.';
 if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
+    $rangoliLock = null;
     try {
+        $rangoliLock = fopen(__DIR__ . '/storage/rangoli-write.lock', 'c');
+        if (!$rangoliLock || !flock($rangoliLock, LOCK_EX)) throw new RuntimeException('Products are busy. Please try again.');
         $productsForAction = loadJsonFile(RANGOLI_PRODUCTS_FILE);
         $contactsForAction = loadJsonFile(RANGOLI_CONTACTS_FILE);
         $ordersForAction = loadJsonFile(RANGOLI_ORDERS_FILE);
+        if (isset($_POST['save_catalogue_product'])) {
+            $productsForAction = rangoliSaveProduct($productsForAction, $_POST);
+            saveJsonFile(RANGOLI_PRODUCTS_FILE, $productsForAction);
+            $_SESSION['notice'] = 'Product saved.';
+            rangoliRedirect('products');
+        }
         if (isset($_POST['add_product'])) {
             $name = trim((string) ($_POST['name'] ?? ''));
             $retail = max(0, (float) ($_POST['retail_price'] ?? 0));
@@ -395,6 +406,7 @@ if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'P
             if(!$found) throw new RuntimeException('Order not found.'); saveJsonFile(RANGOLI_ORDERS_FILE,$ordersForAction); $_SESSION['notice']='Order updated.'; rangoliRedirect('orders');
         }
     } catch(Throwable $rangoliError) { $notice=$rangoliError->getMessage(); }
+    finally { if (is_resource($rangoliLock)) { flock($rangoliLock, LOCK_UN); fclose($rangoliLock); } }
 }
 $calendarItems = $isAuthenticated ? loadJsonFile(CONTENT_CALENDAR_FILE) : [];
 if ($isAuthenticated && in_array($view, ['techdecodes','itedvantage'], true) && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf() && isset($_POST['add_calendar_item'])) {
@@ -466,6 +478,12 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <title><?= $isAuthenticated ? 'Dashboard' : ($isSetup ? 'Sign in' : 'Set up access') ?> · Ray CRM</title>
     <link rel="stylesheet" href="assets/styles.css?v=<?= (int) filemtime(__DIR__ . '/assets/styles.css') ?>">
     <script defer src="assets/app.js?v=<?= (int) filemtime(__DIR__ . '/assets/app.js') ?>"></script>
+    <?php if($isAuthenticated && $view === 'rangoli' && $rangoliPage === 'products'): ?>
+    <link rel="stylesheet" href="assets/rangoli-products.css?v=<?= (int) filemtime(__DIR__ . '/assets/rangoli-products.css') ?>">
+    <script defer src="assets/pdf-lib.min.js"></script>
+    <script defer src="assets/rangoli-pdf.js?v=<?= (int) filemtime(__DIR__ . '/assets/rangoli-pdf.js') ?>"></script>
+    <script defer src="assets/rangoli-products.js?v=<?= (int) filemtime(__DIR__ . '/assets/rangoli-products.js') ?>"></script>
+    <?php endif; ?>
 </head>
 <body class="<?= $isAuthenticated ? 'app-page' : 'auth-page' ?>">
 <?php if (!$isAuthenticated): ?>

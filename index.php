@@ -358,6 +358,12 @@ if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'P
         $productsForAction = loadJsonFile(RANGOLI_PRODUCTS_FILE);
         $contactsForAction = loadJsonFile(RANGOLI_CONTACTS_FILE);
         $ordersForAction = loadJsonFile(RANGOLI_ORDERS_FILE);
+        if (isset($_POST['import_catalogue_products'])) {
+            $import = rangoliImportProducts($productsForAction, (string) ($_POST['product_rows'] ?? ''));
+            saveJsonFile(RANGOLI_PRODUCTS_FILE, $import['products']);
+            $_SESSION['notice'] = $import['added'] . ' products added. ' . $import['skipped'] . ' existing products kept unchanged.';
+            rangoliRedirect('products');
+        }
         if (isset($_POST['save_catalogue_product'])) {
             $productsForAction = rangoliSaveProduct($productsForAction, $_POST);
             saveJsonFile(RANGOLI_PRODUCTS_FILE, $productsForAction);
@@ -395,6 +401,7 @@ if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'P
             $basePrice=(float)$productsForAction[$productIndex][$channel==='dealer'?'dealer_price':'retail_price'];
             if($basePrice<=0) $basePrice=(float)$productsForAction[$productIndex]['retail_price'];
             $manualPrice=(float)($_POST['unit_price']??0); $unitPrice=$manualPrice>0?$manualPrice:$basePrice;
+            if ($manualPrice <= 0 && $basePrice <= 0 && ($productsForAction[$productIndex]['retail_price'] ?? null) === null) throw new RuntimeException('Add a selling price or enter a unit price before creating this order.');
             $total=$unitPrice*$quantity; $paid=min($total,max(0,(float)($_POST['paid']??0)));
             $productsForAction[$productIndex]['stock']=(int)$productsForAction[$productIndex]['stock']-$quantity;
             array_unshift($ordersForAction,['id'=>bin2hex(random_bytes(8)),'contact_id'=>$contactId,'contact_name'=>$contact['name'],'contact_phone'=>$contact['phone']??'','channel'=>$channel,'product_id'=>$productId,'product_name'=>$productsForAction[$productIndex]['name'],'quantity'=>$quantity,'unit_price'=>$unitPrice,'total'=>$total,'paid'=>$paid,'status'=>'new','created_at'=>gmdate('c')]);

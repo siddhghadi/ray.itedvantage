@@ -21,6 +21,7 @@
     form.addEventListener('submit',e=>{if(processing){e.preventDefault();return}get('wr-save').disabled=true;get('wr-save').textContent='Saving…'});
     return;
   }
+  if(!get('wr-product-rows'))return;
   const rows=[...root.querySelectorAll('tr[data-product]')];
   function update(){
     const term=get('wr-search').value.trim().toLocaleLowerCase(),category=get('wr-filter').value;
@@ -44,8 +45,8 @@
     const button=get('wr-make-pdf');button.disabled=true;button.textContent='Preparing PDF…';get('wr-export-status').textContent='Preparing your catalogue…';
     try{
       const products=rows.filter(r=>r.querySelector('input').checked).map(row=>{const p=JSON.parse(row.dataset.product);return {...p,category:row.dataset.category,image:row.querySelector('img')?.src,price:p.retail_price}});
-      const missing=products.find(p=>!p.image||!p.sku||p.category==='Uncategorised');
-      if(missing)throw Error(`Open “${missing.name}” and add its photo, category and SKU before making a PDF.`);
+      const missing=products.find(p=>!p.sku||p.category==='Uncategorised');
+      if(missing)throw Error(`Open “${missing.name}” and add its category and SKU before making a PDF.`);
       get('wr-pdf-pages').replaceChildren();
       const blob=await createCataloguePDF(products,'Woolen Rangoli','four','+91 8419997526',{decoration:'assets/rangoli-decoration.png',onPage:(canvas,index,total)=>{
         const preview=document.createElement('img');preview.src=canvas.toDataURL('image/jpeg',.78);preview.alt=`Catalogue page ${index+1} of ${total}`;get('wr-pdf-pages').append(preview);

@@ -41,7 +41,7 @@ function rangoliSaveProduct(array $products, array $input): array
         $raw = $input[$key] ?? '';
         $fields[$key] = is_scalar($raw) && trim((string) $raw) === '' ? null : rangoliProductNumber($input, $key, 0.001, 100000);
     }
-    $fields['retail_price'] = rangoliProductNumber($input, 'retail_price', 0, 10000000);
+    $fields['retail_price'] = ($input['retail_price'] ?? '') === '' ? null : rangoliProductNumber($input, 'retail_price', 0, 10000000);
     $dealerInput = $input;
     if (!isset($dealerInput['dealer_price']) || $dealerInput['dealer_price'] === '') $dealerInput['dealer_price'] = 0;
     $fields['dealer_price'] = rangoliProductNumber($dealerInput, 'dealer_price', 0, 10000000);
@@ -50,17 +50,41 @@ function rangoliSaveProduct(array $products, array $input): array
     $fields['low_stock'] = $existing['low_stock'] ?? 3;
     $fields['unit'] = (string) ($input['unit'] ?? 'in');
     if (!in_array($fields['unit'], ['in', 'cm', 'mm', 'ft'], true)) throw new RuntimeException('Choose a valid measurement unit.');
-    if ($fields['dealer_price'] > $fields['retail_price']) throw new RuntimeException('Dealer price cannot exceed the selling price.');
+    if ($fields['retail_price'] !== null && $fields['dealer_price'] > $fields['retail_price']) throw new RuntimeException('Dealer price cannot exceed the selling price.');
     $image = (string) ($input['image_data'] ?? '');
     if ($image === '') $image = (string) ($existing['image'] ?? '');
+    if ($image !== '') {
     if (strlen($image) > 2800000 || !preg_match('~^data:image/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$~D', $image, $match)) throw new RuntimeException('Please choose a JPG, PNG or WebP product photo.');
     $bytes = base64_decode($match[2], true);
     $info = $bytes !== false ? @getimagesizefromstring($bytes) : false;
     if (!$info || !in_array($info['mime'], ['image/jpeg', 'image/png', 'image/webp'], true) || $info['mime'] !== 'image/' . $match[1] || $info[0] > 2000 || $info[1] > 2000) throw new RuntimeException('The photo could not be read. Please choose it again.');
+    }
     $fields['image'] = $image;
     $fields['updated_at'] = gmdate('c');
     $saved = array_merge($existing, $fields);
     if ($index === null) { $saved['id'] = bin2hex(random_bytes(8)); $saved['created_at'] = gmdate('c'); array_unshift($products, $saved); }
     else $products[$index] = $saved;
     return $products;
+}
+
+function rangoliImportProducts(array $products, string $text): array
+{
+    if (strlen($text) > 200000) throw new RuntimeException('Please import up to 500 products at a time.');
+    $lines = preg_split('/\r\n|\n|\r/', trim($text, "\r\n"));
+    $headers = ['name','sku','category','retail_price','height','width'];
+    if (str_getcsv(array_shift($lines), "\t", '"', '') !== $headers || !$lines || count($lines) > 500) throw new RuntimeException('Use the column headings shown below and include 1–500 products.');
+    $added = 0; $skipped = 0;
+    foreach ($lines as $line) {
+        $cells = str_getcsv($line, "\t", '"', '');
+        if (count($cells) !== count($headers)) throw new RuntimeException('Each product needs six columns. Keep empty columns for unknown prices or sizes.');
+        $input = array_combine($headers, $cells);
+        $duplicate = false;
+        foreach ($products as $product) {
+            if (strcasecmp(trim($input['name']), trim((string)$product['name'])) === 0) { $duplicate = true; break; }
+        }
+        if ($duplicate) { $skipped++; continue; }
+        $products = rangoliSaveProduct($products, $input + ['unit'=>'in','stock'=>'0','dealer_price'=>'','image_data'=>'']);
+        $added++;
+    }
+    return ['products'=>$products, 'added'=>$added, 'skipped'=>$skipped];
 }

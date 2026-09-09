@@ -81,15 +81,17 @@ async function createCataloguePDF(products, title, layout, whatsapp, options = {
       if (!product) break;
       const y = top + Math.floor(slot/columns) * (cardHeight + gap);
       const x = 100+(slot%columns)*(cardWidth+gap);
+      const imageBox = {x:x+12,y,w:cardWidth-24,h:cardHeight-(perPage===6?240:320)};
+      if (product.image) {
       const image = new Image();
       image.src = product.image;
       try { await image.decode(); } catch { throw new Error(`Cannot read the image for ${product.name}. Edit the product and choose its image again.`); }
-      const single = perPage === 1;
-      const imageBox = {x:x+12,y,w:cardWidth-24,h:cardHeight-(perPage===6?240:320)};
+
       const scale = Math.min(imageBox.w / image.naturalWidth, imageBox.h / image.naturalHeight);
       const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
       ctx.save();ctx.beginPath();ctx.roundRect(imageBox.x+(imageBox.w-w)/2,imageBox.y+(imageBox.h-h)/2,w,h,30);ctx.clip();
       ctx.drawImage(image, imageBox.x + (imageBox.w-w)/2, imageBox.y + (imageBox.h-h)/2, w, h);ctx.restore();
+      }
       const tx = x+12, tw = cardWidth-24;
       let ty = y+imageBox.h+22;
       ctx.fillStyle = '#302922';
@@ -100,7 +102,7 @@ async function createCataloguePDF(products, title, layout, whatsapp, options = {
       if (product.height !== null && product.height !== undefined && product.height !== '') measurements.push(`HEIGHT: ${product.height} ${product.unit}`);
       if (product.width !== null && product.width !== undefined && product.width !== '') measurements.push(`WIDTH: ${product.width} ${product.unit}`);
       if (measurements.length) ty = wrapped(measurements.join('   '), tx, ty, tw, perPage===6?20:24) + 8;
-      if(product.price!==undefined&&product.price!=='') wrapped(`PRICE: ₹${product.price}`, tx, ty, tw, perPage===6?23:27,700);
+      if(product.price!==null&&product.price!==undefined&&product.price!=='') wrapped(`PRICE: ₹${product.price}`, tx, ty, tw, perPage===6?23:27,700);
     }
     ctx.fillStyle = '#654924';ctx.fillRect(0,2220,1654,85);
     ctx.fillStyle = '#fff4dd';

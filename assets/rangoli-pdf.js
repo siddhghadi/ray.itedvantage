@@ -97,7 +97,10 @@ async function createCataloguePDF(products, title, layout, whatsapp, options = {
       ctx.fillStyle = '#765735';
       ty = fitted(`SKU: ${product.sku}`, tx, ty, tw, perPage===6?20:24, 2) + 8;
       ctx.fillStyle = '#302922';
-      ty = wrapped(`HEIGHT: ${product.height} ${product.unit}   WIDTH: ${product.width} ${product.unit}`, tx, ty, tw, perPage===6?20:24) + 8;
+      const measurements = [];
+      if (product.height !== null && product.height !== undefined && product.height !== '') measurements.push(`HEIGHT: ${product.height} ${product.unit}`);
+      if (product.width !== null && product.width !== undefined && product.width !== '') measurements.push(`WIDTH: ${product.width} ${product.unit}`);
+      if (measurements.length) ty = wrapped(measurements.join('   '), tx, ty, tw, perPage===6?20:24) + 8;
       if(product.price!==undefined&&product.price!=='') wrapped(`PRICE: ₹${product.price}`, tx, ty, tw, perPage===6?23:27,700);
     }
     ctx.fillStyle = '#654924';ctx.fillRect(0,2220,1654,85);

@@ -37,9 +37,17 @@ function rangoliSaveProduct(array $products, array $input): array
         if ((string) $product['id'] !== $id && strcasecmp((string) ($product['sku'] ?? ''), $fields['sku']) === 0) throw new RuntimeException('That SKU is already used by another product.');
         if (strcasecmp((string) ($product['category'] ?? ''), $fields['category']) === 0) $fields['category'] = $product['category'];
     }
-    foreach (['height', 'width'] as $key) $fields[$key] = rangoliProductNumber($input, $key, 0.001, 100000);
-    foreach (['retail_price', 'dealer_price', 'cost_price'] as $key) $fields[$key] = rangoliProductNumber($input, $key, 0, 10000000);
-    foreach (['stock', 'low_stock'] as $key) $fields[$key] = (int) rangoliProductNumber($input, $key, 0, 1000000, true);
+    foreach (['height', 'width'] as $key) {
+        $raw = $input[$key] ?? '';
+        $fields[$key] = is_scalar($raw) && trim((string) $raw) === '' ? null : rangoliProductNumber($input, $key, 0.001, 100000);
+    }
+    $fields['retail_price'] = rangoliProductNumber($input, 'retail_price', 0, 10000000);
+    $dealerInput = $input;
+    if (!isset($dealerInput['dealer_price']) || $dealerInput['dealer_price'] === '') $dealerInput['dealer_price'] = 0;
+    $fields['dealer_price'] = rangoliProductNumber($dealerInput, 'dealer_price', 0, 10000000);
+    $fields['stock'] = (int) rangoliProductNumber($input, 'stock', 0, 1000000, true);
+    $fields['cost_price'] = $existing['cost_price'] ?? 0;
+    $fields['low_stock'] = $existing['low_stock'] ?? 3;
     $fields['unit'] = (string) ($input['unit'] ?? 'in');
     if (!in_array($fields['unit'], ['in', 'cm', 'mm', 'ft'], true)) throw new RuntimeException('Choose a valid measurement unit.');
     if ($fields['dealer_price'] > $fields['retail_price']) throw new RuntimeException('Dealer price cannot exceed the selling price.');

@@ -1,6 +1,6 @@
 'use strict';
 
-// Render text with browser fonts so names and SKUs can contain any supported script.
+// Render text with browser fonts so product names can contain any supported script.
 // Embed each rendered A4 page in a real PDF using the bundled, offline pdf-lib.
 async function createCataloguePDF(products, title, layout, whatsapp, options = {}) {
   if (!window.PDFLib) throw new Error('PDF library could not load. Keep the vendor folder beside index.html.');
@@ -48,7 +48,7 @@ async function createCataloguePDF(products, title, layout, whatsapp, options = {
       return y;
     }
     function fitted(value, x, y, width, size, maxLines, weight=400) {
-      // Reserve a fixed number of lines so long names/SKUs cannot run into the next card.
+      // Reserve a fixed number of lines so long names cannot run into the next card.
       while(size>10) {
         ctx.font=`${weight} ${size}px "Segoe UI", Arial, sans-serif`;
         let lines=1,line='';
@@ -95,7 +95,6 @@ async function createCataloguePDF(products, title, layout, whatsapp, options = {
       ctx.fillStyle = '#302922';
       ty = fitted(product.name.toUpperCase(), tx, ty, tw, perPage===6?25:32, 3, 700) + 8;
       ctx.fillStyle = '#765735';
-      ty = fitted(`SKU: ${product.sku}`, tx, ty, tw, perPage===6?20:24, 2) + 8;
       ctx.fillStyle = '#302922';
       const measurements = [];
       if (product.height !== null && product.height !== undefined && product.height !== '') measurements.push(`HEIGHT: ${product.height} ${product.unit}`);

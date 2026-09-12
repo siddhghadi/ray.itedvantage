@@ -58,20 +58,52 @@
       dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close(); });
     });
 
-    document.querySelectorAll('[data-ct-table-filter]').forEach(function (input) {
-      input.addEventListener('input', function () {
-        var table = document.getElementById(input.getAttribute('data-ct-table-filter'));
-        var query = input.value.trim().toLowerCase();
-        if (!table) return;
-        table.querySelectorAll('tbody tr').forEach(function (row) {
-          row.hidden = query !== '' && !row.textContent.toLowerCase().includes(query);
-        });
-      });
+    document.querySelectorAll('.ct-index .ct-table[id]').forEach(function (table) {
+      var rows = Array.from(table.querySelectorAll('tbody tr'));
+      var input = document.querySelector('[data-ct-table-filter="' + table.id + '"]');
+      var pageSize = 10;
+      var pageIndex = 0;
+      var footer = document.createElement('div');
+      footer.className = 'ct-pagination';
+      footer.innerHTML = '<span></span><div><button type="button" aria-label="Previous page">‹</button><button type="button" aria-label="Next page">›</button></div>';
+      table.closest('.ct-table-wrap').insertAdjacentElement('afterend', footer);
+      var label = footer.querySelector('span');
+      var previous = footer.querySelector('button:first-child');
+      var next = footer.querySelector('button:last-child');
+
+      function renderTable() {
+        var query = input ? input.value.trim().toLowerCase() : '';
+        var matching = rows.filter(function (row) { return query === '' || row.textContent.toLowerCase().includes(query); });
+        var pages = Math.max(1, Math.ceil(matching.length / pageSize));
+        pageIndex = Math.min(pageIndex, pages - 1);
+        rows.forEach(function (row) { row.hidden = true; });
+        matching.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize).forEach(function (row) { row.hidden = false; });
+        var start = matching.length ? pageIndex * pageSize + 1 : 0;
+        var end = Math.min((pageIndex + 1) * pageSize, matching.length);
+        label.textContent = start + '–' + end + ' of ' + matching.length;
+        previous.disabled = pageIndex === 0;
+        next.disabled = pageIndex >= pages - 1;
+      }
+      previous.addEventListener('click', function () { if (pageIndex > 0) { pageIndex--; renderTable(); } });
+      next.addEventListener('click', function () { pageIndex++; renderTable(); });
+      if (input) input.addEventListener('input', function () { pageIndex = 0; renderTable(); });
+      renderTable();
     });
 
     var invoiceForm = document.querySelector('[data-ct-invoice-form]');
     if (invoiceForm) {
       var invoiceChoices = Array.from(invoiceForm.querySelectorAll('.ct-select-list label'));
+      var invoiceCustomer = invoiceForm.querySelector('[data-ct-invoice-customer]');
+      if (invoiceCustomer) invoiceCustomer.addEventListener('change', function () {
+        var customerId = invoiceCustomer.value;
+        invoiceChoices.forEach(function (choice) {
+          var checkbox = choice.querySelector('input');
+          checkbox.checked = false;
+          checkbox.disabled = false;
+          choice.hidden = customerId !== '' && choice.dataset.customer !== customerId;
+          choice.classList.remove('disabled');
+        });
+      });
       invoiceChoices.forEach(function (label) {
         var input = label.querySelector('input');
         input.addEventListener('change', function () {

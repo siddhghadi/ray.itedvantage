@@ -17,6 +17,8 @@ storage/chemtech-products.json
 storage/chemtech-orders.json
 storage/chemtech-invoices.json
 storage/chemtech-payments.json
+storage/chemtech-enquiries.json
+storage/chemtech-demo-v1.json
 storage/chemtech-write.lock
 storage/content-calendar.json.tmp
 /.idea/

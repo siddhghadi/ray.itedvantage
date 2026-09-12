@@ -420,7 +420,7 @@ if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'P
 $chemtechPages = ['dashboard','enquiries','customers','quotations','orders','invoices','payments','products','inventory','purchases','dispatch','reports','documents','settings'];
 $chemtechPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $chemtechPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 if ($isAuthenticated && $view === 'chemtech') {
-    try { chemtechSeed(); } catch (Throwable $seedError) { $notice = 'ChemTech storage could not be prepared.'; }
+    try { chemtechSeed(); chemtechSeedDemoData(); } catch (Throwable $seedError) { $notice = 'ChemTech storage could not be prepared.'; }
 }
 if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === 'POST' && !validCsrf()) $notice = 'Your session expired. Please reload and try again.';
 if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
@@ -627,6 +627,7 @@ $chemtechProducts = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEM
 $chemtechOrders = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_ORDERS_FILE) : [];
 $chemtechInvoices = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_INVOICES_FILE) : [];
 $chemtechPayments = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_PAYMENTS_FILE) : [];
+$chemtechEnquiries = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_ENQUIRIES_FILE) : [];
 $categoryCounts = [];
 foreach ($leads as $lead) {
     $category = trim((string) ($lead['category'] ?? '')) ?: 'Uncategorized';

@@ -535,6 +535,10 @@ if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === '
             $invoice = [
                 'id'=>$invoiceId, 'invoice_number'=>$invoiceNumber, 'sequence'=>(int) substr($invoiceNumber, strrpos($invoiceNumber, '/') + 1),
                 'financial_year'=>chemtechFinancialYear($invoiceDate), 'customer_id'=>$customer['id'], 'customer_name'=>$customer['name'],
+                'customer_gstin'=>$customer['gstin'] ?? '', 'customer_state'=>$customer['state'] ?? '', 'customer_state_code'=>$customer['state_code'] ?? '',
+                'customer_address'=>$customer['address'] ?? '', 'company_name'=>$ctSettingsForAction['legal_name'] ?: $ctSettingsForAction['company_name'],
+                'company_gstin'=>$ctSettingsForAction['gstin'] ?? '', 'company_state'=>$ctSettingsForAction['state'] ?? '',
+                'company_state_code'=>$ctSettingsForAction['state_code'] ?? '', 'company_address'=>$ctSettingsForAction['address'] ?? '',
                 'order_ids'=>$selectedIds, 'subtotal_paise'=>array_sum(array_column($selected, 'subtotal_paise')),
                 'cgst_paise'=>array_sum(array_column($selected, 'cgst_paise')), 'sgst_paise'=>array_sum(array_column($selected, 'sgst_paise')),
                 'igst_paise'=>array_sum(array_column($selected, 'igst_paise')), 'total_paise'=>array_sum(array_column($selected, 'total_paise')),
@@ -547,7 +551,8 @@ if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === '
             saveJsonFile(CHEMTECH_INVOICES_FILE, $ctInvoicesForAction);
             saveJsonFile(CHEMTECH_ORDERS_FILE, $ctOrdersForAction);
             $_SESSION['notice'] = $invoiceNumber . ' created from ' . count($selectedIds) . ' order(s).';
-            chemtechRedirect('invoices');
+            header('Location: ?business=chemtech&page=invoices&invoice=' . rawurlencode($invoiceId));
+            exit;
         }
 
         if (isset($_POST['record_chemtech_payment'])) {

@@ -94,13 +94,19 @@
     if (invoiceForm) {
       var invoiceChoices = Array.from(invoiceForm.querySelectorAll('.ct-select-list label'));
       var invoiceCustomer = invoiceForm.querySelector('[data-ct-invoice-customer]');
+      var invoiceOrders = invoiceForm.querySelector('[data-ct-invoice-orders]');
+      var invoiceMessage = invoiceOrders ? invoiceOrders.querySelector('p') : null;
       if (invoiceCustomer) invoiceCustomer.addEventListener('change', function () {
         var customerId = invoiceCustomer.value;
+        if (invoiceMessage) {
+          invoiceMessage.textContent = customerId === '' ? 'Choose a customer to see their orders.' : 'Select one or more orders to include.';
+          invoiceMessage.hidden = customerId !== '';
+        }
         invoiceChoices.forEach(function (choice) {
           var checkbox = choice.querySelector('input');
           checkbox.checked = false;
           checkbox.disabled = false;
-          choice.hidden = customerId !== '' && choice.dataset.customer !== customerId;
+          choice.hidden = customerId === '' || choice.dataset.customer !== customerId;
           choice.classList.remove('disabled');
         });
       });
@@ -117,7 +123,19 @@
           });
         });
       });
+      invoiceForm.addEventListener('submit', function (event) {
+        if (invoiceChoices.some(function (choice) { return choice.querySelector('input').checked; })) return;
+        event.preventDefault();
+        if (invoiceMessage) {
+          invoiceMessage.textContent = 'Select an unbilled order before creating the invoice.';
+          invoiceMessage.hidden = false;
+        }
+      });
     }
+
+    document.querySelectorAll('[data-print-invoice]').forEach(function (button) {
+      button.addEventListener('click', function () { window.print(); });
+    });
 
     var blogTitle = document.getElementById('blog-title');
     if (blogTitle) {

@@ -13,6 +13,7 @@ const RANGOLI_ORDERS_FILE = __DIR__ . '/storage/rangoli-orders.json';
 const SENDER_EMAIL = 'contact@techdecodes.com';
 const OWNER_CALLING_NUMBER = '+91 7039636906';
 require_once __DIR__ . '/views/rangoli-product-functions.php';
+require_once __DIR__ . '/views/chemtech-functions.php';
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Strict']);
@@ -21,7 +22,8 @@ session_start();
 header('X-Frame-Options: DENY');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');
-header("Content-Security-Policy: default-src 'self'; style-src 'self'; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'");
+$cspNonce = base64_encode(random_bytes(18));
+header("Content-Security-Policy: default-src 'self'; style-src 'self' 'nonce-" . $cspNonce . "'; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'");
 
 if (!isset($_SESSION['csrf'])) {
     $_SESSION['csrf'] = bin2hex(random_bytes(32));
@@ -258,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $requestedBusiness = (string) ($_GET['business'] ?? '');
-$view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli'], true) ? $requestedBusiness : 'home';
+$view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli','chemtech'], true) ? $requestedBusiness : 'home';
 $allowedPages = ['dashboard','leads','payments','revenue','email','activity','calendar','settings'];
 $tdPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $allowedPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 $notice = '';
@@ -415,6 +417,160 @@ if ($isAuthenticated && $view === 'rangoli' && $_SERVER['REQUEST_METHOD'] === 'P
     } catch(Throwable $rangoliError) { $notice=$rangoliError->getMessage(); }
     finally { if (is_resource($rangoliLock)) { flock($rangoliLock, LOCK_UN); fclose($rangoliLock); } }
 }
+$chemtechPages = ['dashboard','enquiries','customers','quotations','orders','invoices','payments','products','inventory','purchases','dispatch','reports','documents','settings'];
+$chemtechPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $chemtechPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
+if ($isAuthenticated && $view === 'chemtech') {
+    try { chemtechSeed(); } catch (Throwable $seedError) { $notice = 'ChemTech storage could not be prepared.'; }
+}
+if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === 'POST' && !validCsrf()) $notice = 'Your session expired. Please reload and try again.';
+if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
+    $chemtechLock = null;
+    try {
+        $chemtechLock = fopen(__DIR__ . '/storage/chemtech-write.lock', 'c');
+        if (!$chemtechLock || !flock($chemtechLock, LOCK_EX)) throw new RuntimeException('ChemTech data is busy. Please try again.');
+        $ctSettingsForAction = chemtechSettings();
+        $ctCustomersForAction = loadJsonFile(CHEMTECH_CUSTOMERS_FILE);
+        $ctProductsForAction = loadJsonFile(CHEMTECH_PRODUCTS_FILE);
+        $ctOrdersForAction = loadJsonFile(CHEMTECH_ORDERS_FILE);
+        $ctInvoicesForAction = loadJsonFile(CHEMTECH_INVOICES_FILE);
+        $ctPaymentsForAction = loadJsonFile(CHEMTECH_PAYMENTS_FILE);
+
+        if (isset($_POST['save_chemtech_settings'])) {
+            $companyName = chemtechText($_POST['company_name'] ?? '', 80);
+            $shortName = strtoupper(preg_replace('/[^A-Z0-9]/i', '', chemtechText($_POST['short_name'] ?? '', 3)) ?? '');
+            $accent = strtolower(chemtechText($_POST['accent'] ?? '', 7));
+            $stateCode = preg_replace('/\D+/', '', (string) ($_POST['state_code'] ?? '')) ?? '';
+            if ($companyName === '' || $shortName === '') throw new RuntimeException('Add a company name and a 1–3 character icon.');
+            if (!preg_match('/^#[0-9a-f]{6}$/', $accent)) throw new RuntimeException('Choose a valid brand colour.');
+            if ($stateCode !== '' && strlen($stateCode) !== 2) throw new RuntimeException('GST state code must contain two digits.');
+            foreach (array_keys(chemtechDefaults()) as $field) {
+                if (array_key_exists($field, $_POST)) $ctSettingsForAction[$field] = chemtechText($_POST[$field], $field === 'address' ? 500 : 120);
+            }
+            $ctSettingsForAction['company_name'] = $companyName;
+            $ctSettingsForAction['short_name'] = $shortName;
+            $ctSettingsForAction['accent'] = $accent;
+            $ctSettingsForAction['state_code'] = $stateCode;
+            saveJsonFile(CHEMTECH_SETTINGS_FILE, $ctSettingsForAction);
+            $_SESSION['notice'] = 'Company branding and settings updated.';
+            chemtechRedirect('settings');
+        }
+
+        if (isset($_POST['add_chemtech_customer'])) {
+            $name = chemtechText($_POST['name'] ?? '', 120);
+            $gstin = strtoupper(chemtechText($_POST['gstin'] ?? '', 15));
+            $stateCode = preg_replace('/\D+/', '', (string) ($_POST['state_code'] ?? '')) ?? '';
+            $cycle = (string) ($_POST['billing_cycle'] ?? 'per_order');
+            if ($name === '' || ($stateCode !== '' && strlen($stateCode) !== 2)) throw new RuntimeException('Add a customer name and valid two-digit state code.');
+            if (!in_array($cycle, ['per_order','weekly','fortnightly','monthly','custom'], true)) $cycle = 'per_order';
+            if ($gstin !== '' && array_filter($ctCustomersForAction, static fn(array $customer): bool => strcasecmp((string) ($customer['gstin'] ?? ''), $gstin) === 0)) throw new RuntimeException('A customer with this GSTIN already exists.');
+            array_unshift($ctCustomersForAction, [
+                'id'=>bin2hex(random_bytes(8)), 'name'=>$name, 'contact_person'=>chemtechText($_POST['contact_person'] ?? '', 120),
+                'phone'=>whatsappCandidatePhone((string) ($_POST['phone'] ?? '')), 'email'=>strtolower(chemtechText($_POST['email'] ?? '', 160)),
+                'gstin'=>$gstin, 'state'=>chemtechText($_POST['state'] ?? '', 80), 'state_code'=>$stateCode,
+                'billing_cycle'=>$cycle, 'credit_days'=>max(0, min(365, (int) ($_POST['credit_days'] ?? 0))),
+                'address'=>chemtechText($_POST['address'] ?? '', 500), 'created_at'=>gmdate('c')
+            ]);
+            saveJsonFile(CHEMTECH_CUSTOMERS_FILE, $ctCustomersForAction);
+            $_SESSION['notice'] = 'Customer added.';
+            chemtechRedirect('customers');
+        }
+
+        if (isset($_POST['add_chemtech_product'])) {
+            $name = chemtechText($_POST['name'] ?? '', 120);
+            $sku = strtoupper(chemtechText($_POST['sku'] ?? '', 50));
+            if ($name === '' || $sku === '') throw new RuntimeException('Add a product name and SKU.');
+            if (array_filter($ctProductsForAction, static fn(array $product): bool => strcasecmp((string) ($product['sku'] ?? ''), $sku) === 0)) throw new RuntimeException('This SKU already exists.');
+            $gstRate = max(0, min(50, (float) ($_POST['gst_rate'] ?? 18)));
+            array_unshift($ctProductsForAction, [
+                'id'=>bin2hex(random_bytes(8)), 'name'=>$name, 'category'=>chemtechText($_POST['category'] ?? '', 80), 'sku'=>$sku,
+                'hsn'=>chemtechText($_POST['hsn'] ?? '', 20), 'unit'=>chemtechText($_POST['unit'] ?? 'kg', 20),
+                'gst_rate_bps'=>(int) round($gstRate * 100), 'sale_price_paise'=>max(0, chemtechMoneyToPaise($_POST['sale_price'] ?? 0)),
+                'stock_milli'=>(int) round(max(0, (float) ($_POST['stock'] ?? 0)) * 1000),
+                'reorder_milli'=>(int) round(max(0, (float) ($_POST['reorder_level'] ?? 0)) * 1000), 'created_at'=>gmdate('c')
+            ]);
+            saveJsonFile(CHEMTECH_PRODUCTS_FILE, $ctProductsForAction);
+            $_SESSION['notice'] = 'Product added.';
+            chemtechRedirect('products');
+        }
+
+        if (isset($_POST['create_chemtech_order'])) {
+            $customerId = (string) ($_POST['customer_id'] ?? '');
+            $productId = (string) ($_POST['product_id'] ?? '');
+            $customer = chemtechFind($ctCustomersForAction, $customerId);
+            $productIndex = null;
+            foreach ($ctProductsForAction as $index => $product) if (hash_equals((string) ($product['id'] ?? ''), $productId)) { $productIndex = $index; break; }
+            $quantityMilli = (int) round(max(0, (float) ($_POST['quantity'] ?? 0)) * 1000);
+            if (!$customer || $productIndex === null || $quantityMilli <= 0) throw new RuntimeException('Choose a customer, product, and valid quantity.');
+            if ((int) ($ctProductsForAction[$productIndex]['stock_milli'] ?? 0) < $quantityMilli) throw new RuntimeException('Not enough stock for this order.');
+            $unitPrice = chemtechMoneyToPaise($_POST['unit_price'] ?? 0);
+            if ($unitPrice <= 0) $unitPrice = (int) ($ctProductsForAction[$productIndex]['sale_price_paise'] ?? 0);
+            if ($unitPrice <= 0) throw new RuntimeException('Add a valid unit price.');
+            $totals = chemtechOrderTotals($ctProductsForAction[$productIndex], $quantityMilli, $unitPrice, (string) $ctSettingsForAction['state_code'], (string) ($customer['state_code'] ?? ''));
+            $orderNumber = 'SO-' . date('ymd') . '-' . str_pad((string) (count($ctOrdersForAction) + 1), 3, '0', STR_PAD_LEFT);
+            $ctProductsForAction[$productIndex]['stock_milli'] -= $quantityMilli;
+            array_unshift($ctOrdersForAction, array_merge($totals, [
+                'id'=>bin2hex(random_bytes(8)), 'order_number'=>$orderNumber, 'customer_id'=>$customerId, 'customer_name'=>$customer['name'],
+                'product_id'=>$productId, 'product_name'=>$ctProductsForAction[$productIndex]['name'], 'hsn'=>$ctProductsForAction[$productIndex]['hsn'],
+                'unit'=>$ctProductsForAction[$productIndex]['unit'], 'gst_rate_bps'=>$ctProductsForAction[$productIndex]['gst_rate_bps'],
+                'quantity_milli'=>$quantityMilli, 'unit_price_paise'=>$unitPrice, 'status'=>'confirmed', 'billing_status'=>'unbilled', 'invoice_id'=>'',
+                'created_at'=>gmdate('c')
+            ]));
+            saveJsonFile(CHEMTECH_PRODUCTS_FILE, $ctProductsForAction);
+            saveJsonFile(CHEMTECH_ORDERS_FILE, $ctOrdersForAction);
+            $_SESSION['notice'] = $orderNumber . ' created and stock updated.';
+            chemtechRedirect('orders');
+        }
+
+        if (isset($_POST['create_chemtech_invoice'])) {
+            $selectedIds = array_values(array_filter(array_map('strval', (array) ($_POST['order_ids'] ?? []))));
+            if (!$selectedIds) throw new RuntimeException('Select one or more unbilled orders.');
+            $selected = array_values(array_filter($ctOrdersForAction, static fn(array $order): bool => in_array((string) ($order['id'] ?? ''), $selectedIds, true) && ($order['billing_status'] ?? 'unbilled') === 'unbilled'));
+            if (count($selected) !== count($selectedIds)) throw new RuntimeException('One selected order was already billed. Reload and try again.');
+            $customerIds = array_unique(array_column($selected, 'customer_id'));
+            if (count($customerIds) !== 1) throw new RuntimeException('A consolidated invoice can contain orders from only one customer.');
+            $customer = chemtechFind($ctCustomersForAction, (string) $customerIds[0]);
+            if (!$customer) throw new RuntimeException('Customer not found.');
+            $invoiceNumber = chemtechInvoiceNumber($ctInvoicesForAction, (string) $ctSettingsForAction['invoice_prefix']);
+            $invoiceId = bin2hex(random_bytes(8));
+            $invoiceDate = new DateTimeImmutable('today', new DateTimeZone('Asia/Kolkata'));
+            $creditDays = (int) ($customer['credit_days'] ?? 0);
+            $invoice = [
+                'id'=>$invoiceId, 'invoice_number'=>$invoiceNumber, 'sequence'=>(int) substr($invoiceNumber, strrpos($invoiceNumber, '/') + 1),
+                'financial_year'=>chemtechFinancialYear($invoiceDate), 'customer_id'=>$customer['id'], 'customer_name'=>$customer['name'],
+                'order_ids'=>$selectedIds, 'subtotal_paise'=>array_sum(array_column($selected, 'subtotal_paise')),
+                'cgst_paise'=>array_sum(array_column($selected, 'cgst_paise')), 'sgst_paise'=>array_sum(array_column($selected, 'sgst_paise')),
+                'igst_paise'=>array_sum(array_column($selected, 'igst_paise')), 'total_paise'=>array_sum(array_column($selected, 'total_paise')),
+                'paid_paise'=>0, 'status'=>'unpaid', 'invoice_date'=>$invoiceDate->format('Y-m-d'), 'due_date'=>$invoiceDate->modify('+' . $creditDays . ' days')->format('Y-m-d'),
+                'created_at'=>gmdate('c')
+            ];
+            array_unshift($ctInvoicesForAction, $invoice);
+            foreach ($ctOrdersForAction as &$order) if (in_array((string) ($order['id'] ?? ''), $selectedIds, true)) { $order['billing_status']='billed'; $order['invoice_id']=$invoiceId; }
+            unset($order);
+            saveJsonFile(CHEMTECH_INVOICES_FILE, $ctInvoicesForAction);
+            saveJsonFile(CHEMTECH_ORDERS_FILE, $ctOrdersForAction);
+            $_SESSION['notice'] = $invoiceNumber . ' created from ' . count($selectedIds) . ' order(s).';
+            chemtechRedirect('invoices');
+        }
+
+        if (isset($_POST['record_chemtech_payment'])) {
+            $invoiceId = (string) ($_POST['invoice_id'] ?? '');
+            $amount = max(0, chemtechMoneyToPaise($_POST['amount'] ?? 0));
+            $invoiceIndex = null;
+            foreach ($ctInvoicesForAction as $index => $invoice) if (hash_equals((string) ($invoice['id'] ?? ''), $invoiceId)) { $invoiceIndex = $index; break; }
+            if ($invoiceIndex === null || $amount <= 0) throw new RuntimeException('Choose an invoice and enter a payment amount.');
+            $outstanding = max(0, (int) $ctInvoicesForAction[$invoiceIndex]['total_paise'] - (int) $ctInvoicesForAction[$invoiceIndex]['paid_paise']);
+            if ($amount > $outstanding) throw new RuntimeException('Payment cannot be higher than the invoice balance.');
+            $ctInvoicesForAction[$invoiceIndex]['paid_paise'] += $amount;
+            $ctInvoicesForAction[$invoiceIndex]['status'] = $amount === $outstanding ? 'paid' : 'part_paid';
+            array_unshift($ctPaymentsForAction, ['id'=>bin2hex(random_bytes(8)), 'invoice_id'=>$invoiceId, 'invoice_number'=>$ctInvoicesForAction[$invoiceIndex]['invoice_number'], 'customer_name'=>$ctInvoicesForAction[$invoiceIndex]['customer_name'], 'amount_paise'=>$amount, 'method'=>chemtechText($_POST['method'] ?? 'bank', 30), 'reference'=>chemtechText($_POST['reference'] ?? '', 80), 'payment_date'=>(string) ($_POST['payment_date'] ?? date('Y-m-d')), 'created_at'=>gmdate('c')]);
+            saveJsonFile(CHEMTECH_INVOICES_FILE, $ctInvoicesForAction);
+            saveJsonFile(CHEMTECH_PAYMENTS_FILE, $ctPaymentsForAction);
+            $_SESSION['notice'] = 'Payment recorded.';
+            chemtechRedirect('payments');
+        }
+    } catch (Throwable $chemtechError) { $notice = $chemtechError->getMessage(); }
+    finally { if (is_resource($chemtechLock)) { flock($chemtechLock, LOCK_UN); fclose($chemtechLock); } }
+}
 $calendarItems = $isAuthenticated ? loadJsonFile(CONTENT_CALENDAR_FILE) : [];
 if ($isAuthenticated && in_array($view, ['techdecodes','itedvantage'], true) && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf() && isset($_POST['add_calendar_item'])) {
     try {
@@ -467,6 +623,12 @@ $campaigns = $isAuthenticated ? loadJsonFile(CAMPAIGNS_FILE) : [];
 $rangoliProducts = $isAuthenticated ? loadJsonFile(RANGOLI_PRODUCTS_FILE) : [];
 $rangoliContacts = $isAuthenticated ? loadJsonFile(RANGOLI_CONTACTS_FILE) : [];
 $rangoliOrders = $isAuthenticated ? loadJsonFile(RANGOLI_ORDERS_FILE) : [];
+$chemtechSettings = $isAuthenticated ? chemtechSettings() : chemtechDefaults();
+$chemtechCustomers = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_CUSTOMERS_FILE) : [];
+$chemtechProducts = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_PRODUCTS_FILE) : [];
+$chemtechOrders = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_ORDERS_FILE) : [];
+$chemtechInvoices = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_INVOICES_FILE) : [];
+$chemtechPayments = $isAuthenticated && $view === 'chemtech' ? loadJsonFile(CHEMTECH_PAYMENTS_FILE) : [];
 $categoryCounts = [];
 foreach ($leads as $lead) {
     $category = trim((string) ($lead['category'] ?? '')) ?: 'Uncategorized';
@@ -484,6 +646,9 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <meta name="robots" content="noindex, nofollow">
     <title><?= $isAuthenticated ? 'Dashboard' : ($isSetup ? 'Sign in' : 'Set up access') ?> · Ray CRM</title>
     <link rel="stylesheet" href="assets/styles.css?v=<?= (int) filemtime(__DIR__ . '/assets/styles.css') ?>">
+    <?php if($isAuthenticated): $safeChemtechAccent = preg_match('/^#[0-9a-f]{6}$/i', (string) $chemtechSettings['accent']) ? (string) $chemtechSettings['accent'] : '#1f6f5c'; ?>
+    <style nonce="<?= htmlspecialchars($cspNonce) ?>">.ct-workspace{--ct-accent:<?= htmlspecialchars($safeChemtechAccent) ?>}.business-card.chem{--chemtech-accent:<?= htmlspecialchars($safeChemtechAccent) ?>}</style>
+    <?php endif; ?>
     <script defer src="assets/app.js?v=<?= (int) filemtime(__DIR__ . '/assets/app.js') ?>"></script>
     <?php if($isAuthenticated && $view === 'rangoli' && $rangoliPage === 'products'): ?>
     <link rel="stylesheet" href="assets/rangoli-products.css?v=<?= (int) filemtime(__DIR__ . '/assets/rangoli-products.css') ?>">
@@ -590,6 +755,8 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
         <?php require __DIR__ . '/views/itedvantage.php'; ?>
     <?php elseif ($view === 'rangoli'): ?>
         <?php require __DIR__ . '/views/rangoli.php'; ?>
+    <?php elseif ($view === 'chemtech'): ?>
+        <?php require __DIR__ . '/views/chemtech.php'; ?>
     <?php else: ?>
         <header class="topbar">
             <a class="logo" href="./"><span>R</span> Ray CRM</a>
@@ -601,6 +768,7 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
                 <a class="business-card tech" href="?business=techdecodes"><span class="card-icon">TD</span><div><h2>TechDecodes</h2><p>Digital marketing</p></div><span class="status">Open workspace →</span></a>
                 <a class="business-card it" href="?business=itedvantage"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Blogs & digital products</p></div><span class="status">Open workspace →</span></a>
                 <a class="business-card wool" href="?business=rangoli"><span class="card-icon">WR</span><div><h2>Woollen Rangoli</h2><p>Products, dealers & orders</p></div><span class="status">Open workspace →</span></a>
+                <a class="business-card chem" href="?business=chemtech"><span class="card-icon"><?= htmlspecialchars((string) $chemtechSettings['short_name']) ?></span><div><h2><?= htmlspecialchars((string) $chemtechSettings['company_name']) ?></h2><p>Chemical trading CRM demo</p></div><span class="status">Open workspace →</span></a>
             </section>
         </main>
     <?php endif; ?>

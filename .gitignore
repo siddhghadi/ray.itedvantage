@@ -11,6 +11,13 @@ storage/content-calendar.json
 storage/rangoli-products.json
 storage/rangoli-contacts.json
 storage/rangoli-orders.json
+storage/chemtech-settings.json
+storage/chemtech-customers.json
+storage/chemtech-products.json
+storage/chemtech-orders.json
+storage/chemtech-invoices.json
+storage/chemtech-payments.json
+storage/chemtech-write.lock
 storage/content-calendar.json.tmp
 /.idea/
 /.vscode/

@@ -24,6 +24,42 @@
       });
     });
 
+    var chemtechSidebar = document.querySelector('[data-ct-sidebar]');
+    if (chemtechSidebar) {
+      root.dataset.ctSidebar = localStorage.getItem('chemtech-sidebar') || 'open';
+      document.querySelectorAll('[data-ct-sidebar-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          if (window.matchMedia('(max-width: 760px)').matches) {
+            chemtechSidebar.classList.toggle('open');
+            return;
+          }
+          root.dataset.ctSidebar = root.dataset.ctSidebar === 'collapsed' ? 'open' : 'collapsed';
+          localStorage.setItem('chemtech-sidebar', root.dataset.ctSidebar);
+        });
+      });
+      chemtechSidebar.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () { chemtechSidebar.classList.remove('open'); });
+      });
+    }
+
+    var invoiceForm = document.querySelector('[data-ct-invoice-form]');
+    if (invoiceForm) {
+      var invoiceChoices = Array.from(invoiceForm.querySelectorAll('.ct-select-list label'));
+      invoiceChoices.forEach(function (label) {
+        var input = label.querySelector('input');
+        input.addEventListener('change', function () {
+          var selected = invoiceChoices.find(function (choice) { return choice.querySelector('input').checked; });
+          var selectedCustomer = selected ? selected.dataset.customer : '';
+          invoiceChoices.forEach(function (choice) {
+            var checkbox = choice.querySelector('input');
+            var blocked = selectedCustomer !== '' && choice.dataset.customer !== selectedCustomer;
+            checkbox.disabled = blocked;
+            choice.classList.toggle('disabled', blocked);
+          });
+        });
+      });
+    }
+
     var blogTitle = document.getElementById('blog-title');
     if (blogTitle) {
       var blogContent = document.getElementById('blog-content');

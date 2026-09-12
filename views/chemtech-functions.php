@@ -13,7 +13,7 @@ function chemtechDefaults(): array
     return [
         'company_name' => 'ChemTech CRM',
         'short_name' => 'CT',
-        'accent' => '#1f6f5c',
+        'accent' => '#faa61d',
         'legal_name' => 'ChemTech Trading Company',
         'gstin' => '',
         'pan' => '',

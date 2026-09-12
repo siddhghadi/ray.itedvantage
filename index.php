@@ -438,17 +438,15 @@ if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === '
         if (isset($_POST['save_chemtech_settings'])) {
             $companyName = chemtechText($_POST['company_name'] ?? '', 80);
             $shortName = strtoupper(preg_replace('/[^A-Z0-9]/i', '', chemtechText($_POST['short_name'] ?? '', 3)) ?? '');
-            $accent = strtolower(chemtechText($_POST['accent'] ?? '', 7));
             $stateCode = preg_replace('/\D+/', '', (string) ($_POST['state_code'] ?? '')) ?? '';
             if ($companyName === '' || $shortName === '') throw new RuntimeException('Add a company name and a 1–3 character icon.');
-            if (!preg_match('/^#[0-9a-f]{6}$/', $accent)) throw new RuntimeException('Choose a valid brand colour.');
             if ($stateCode !== '' && strlen($stateCode) !== 2) throw new RuntimeException('GST state code must contain two digits.');
             foreach (array_keys(chemtechDefaults()) as $field) {
                 if (array_key_exists($field, $_POST)) $ctSettingsForAction[$field] = chemtechText($_POST[$field], $field === 'address' ? 500 : 120);
             }
             $ctSettingsForAction['company_name'] = $companyName;
             $ctSettingsForAction['short_name'] = $shortName;
-            $ctSettingsForAction['accent'] = $accent;
+            $ctSettingsForAction['accent'] = '#faa61d';
             $ctSettingsForAction['state_code'] = $stateCode;
             saveJsonFile(CHEMTECH_SETTINGS_FILE, $ctSettingsForAction);
             $_SESSION['notice'] = 'Company branding and settings updated.';
@@ -646,7 +644,7 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <meta name="robots" content="noindex, nofollow">
     <title><?= $isAuthenticated ? 'Dashboard' : ($isSetup ? 'Sign in' : 'Set up access') ?> · Ray CRM</title>
     <link rel="stylesheet" href="assets/styles.css?v=<?= (int) filemtime(__DIR__ . '/assets/styles.css') ?>">
-    <?php if($isAuthenticated): $safeChemtechAccent = preg_match('/^#[0-9a-f]{6}$/i', (string) $chemtechSettings['accent']) ? (string) $chemtechSettings['accent'] : '#1f6f5c'; ?>
+    <?php if($isAuthenticated): $safeChemtechAccent = '#faa61d'; ?>
     <style nonce="<?= htmlspecialchars($cspNonce) ?>">.ct-workspace{--ct-accent:<?= htmlspecialchars($safeChemtechAccent) ?>}.business-card.chem{--chemtech-accent:<?= htmlspecialchars($safeChemtechAccent) ?>}</style>
     <?php endif; ?>
     <script defer src="assets/app.js?v=<?= (int) filemtime(__DIR__ . '/assets/app.js') ?>"></script>

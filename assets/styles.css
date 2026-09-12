@@ -532,6 +532,15 @@ html[data-theme="dark"] .ct-action-grid a,html[data-theme="dark"] .ct-table th,h
 .ct-pagination { min-height:48px; padding:9px 14px; display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--ct-line); color:var(--ct-muted); background:#fafafa; font-size:11px; }
 .ct-pagination>div { display:flex; gap:5px; }.ct-pagination button { width:30px; height:28px; border:1px solid #c9cacc; border-radius:6px; color:#45484b; background:#fff; cursor:pointer; }.ct-pagination button:disabled { opacity:.4; cursor:default; }
 .ct-table-action { padding:5px 9px; display:inline-flex; border:1px solid #c9cacc; border-radius:6px; color:#4b360b; background:#fff; font-size:10px; font-weight:700; text-decoration:none; }
+.ct-customer-actions { margin:0 0 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.ct-customer-hero { margin:0 0 18px; padding:18px; display:flex; align-items:center; gap:14px; }
+.ct-customer-avatar { width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border-radius:8px; color:#332300; background:#faa61d; font-size:13px; font-weight:800; }
+.ct-customer-hero>div:nth-child(2) { min-width:0; }.ct-customer-hero>div:nth-child(2)>span { color:#8a5a00; font-size:9px; font-weight:800; letter-spacing:.09em; }.ct-customer-hero h2 { margin:3px 0; overflow:hidden; font-size:18px; text-overflow:ellipsis; white-space:nowrap; }.ct-customer-hero p { margin:0; color:var(--ct-muted); font-size:11px; }
+.ct-customer-hero nav { margin-left:auto; display:flex; gap:7px; }
+.ct-customer-grid { margin:0 0 18px; display:grid; grid-template-columns:minmax(280px,.75fr) minmax(0,1.4fr); gap:18px; align-items:stretch; }
+.ct-customer-details dl { margin:0; padding:4px 16px 13px; display:grid; grid-template-columns:125px minmax(0,1fr); }.ct-customer-details dt,.ct-customer-details dd { margin:0; padding:10px 0; border-bottom:1px solid var(--ct-line); font-size:11px; line-height:1.45; }.ct-customer-details dt { color:var(--ct-muted); }.ct-customer-details dd { overflow-wrap:anywhere; font-weight:600; }.ct-customer-details dt:last-of-type,.ct-customer-details dd:last-of-type { border-bottom:0; }
+.ct-empty.compact { min-height:230px; padding:24px; }
+.ct-customer-invoices { margin-top:0; }
 .ct-status { padding:3px 7px; color:#4e3500; background:#fff1cd; font-size:10px; font-weight:650; }
 .ct-status.ready,.ct-status.paid { color:#125c3c; background:#e3f1e9; }
 .ct-status.warning,.ct-status.unpaid { color:#8b4200; background:#ffead9; }
@@ -596,6 +605,7 @@ html[data-theme="dark"] .ct-table-action { color:#ffd985; border-color:#555; bac
   .ct-summary,.ct-summary-three { grid-template-columns:repeat(2,minmax(0,1fr)); }.ct-summary>a,.ct-summary>div { min-height:91px; padding:13px; border-bottom:1px solid var(--ct-line); }.ct-summary>a:nth-child(2n),.ct-summary>div:nth-child(2n) { border-right:0; }.ct-summary strong { font-size:17px; }
   .ct-dashboard-grid { gap:12px; }.ct-stack { grid-template-columns:1fr; gap:12px; }.ct-section-head,.ct-index-toolbar { min-height:58px; padding:11px 12px; }.ct-index-toolbar { align-items:flex-start; flex-direction:column; }.ct-toolbar-actions { width:100%; }.ct-search { flex:1; }.ct-search input { width:100%; }.ct-table th,.ct-table td { height:45px; padding:8px 11px; }.ct-empty { min-height:220px; }
   .ct-workflow-guide>header { align-items:flex-start; flex-direction:column; gap:4px; }.ct-workflow-guide>div { grid-template-columns:1fr; }.ct-workflow-guide a { border-right:0; border-bottom:1px solid var(--ct-line); }.ct-workflow-guide a:last-child { border-bottom:0; }
+  .ct-customer-hero { align-items:flex-start; flex-wrap:wrap; }.ct-customer-hero nav { width:100%; margin:2px 0 0; }.ct-customer-hero nav .ct-button { flex:1; justify-content:center; }.ct-customer-grid { grid-template-columns:1fr; gap:12px; }.ct-customer-details dl { grid-template-columns:105px minmax(0,1fr); }
   .ct-settings-row { grid-template-columns:1fr; gap:10px; }.ct-form-grid.two { grid-template-columns:1fr; }.ct-settings-row .ct-card { padding:14px; }.ct-dialog-panel { width:100vw; }.ct-dialog-body { padding:15px; }
   .ct-invoice-actions { align-items:stretch; }.ct-invoice-document { padding:18px 14px; border-radius:7px; }.ct-invoice-header { grid-template-columns:1fr; gap:16px; }.ct-invoice-parties,.ct-invoice-totals { grid-template-columns:1fr; gap:18px; }.ct-invoice-lines { min-width:760px; }
 }

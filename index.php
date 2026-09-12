@@ -473,6 +473,33 @@ if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === '
             chemtechRedirect('customers');
         }
 
+        if (isset($_POST['update_chemtech_customer'])) {
+            $customerId = (string) ($_POST['customer_id'] ?? '');
+            $customerIndex = null;
+            foreach ($ctCustomersForAction as $index => $customer) {
+                if (hash_equals((string) ($customer['id'] ?? ''), $customerId)) { $customerIndex = $index; break; }
+            }
+            if ($customerIndex === null) throw new RuntimeException('Customer not found.');
+            $name = chemtechText($_POST['name'] ?? '', 120);
+            $gstin = strtoupper(chemtechText($_POST['gstin'] ?? '', 15));
+            $stateCode = preg_replace('/\D+/', '', (string) ($_POST['state_code'] ?? '')) ?? '';
+            $cycle = (string) ($_POST['billing_cycle'] ?? 'per_order');
+            if ($name === '' || ($stateCode !== '' && strlen($stateCode) !== 2)) throw new RuntimeException('Add a customer name and valid two-digit state code.');
+            if (!in_array($cycle, ['per_order','weekly','fortnightly','monthly','custom'], true)) $cycle = 'per_order';
+            if ($gstin !== '' && array_filter($ctCustomersForAction, static fn(array $customer): bool => (string) ($customer['id'] ?? '') !== $customerId && strcasecmp((string) ($customer['gstin'] ?? ''), $gstin) === 0)) throw new RuntimeException('Another customer already uses this GSTIN.');
+            $ctCustomersForAction[$customerIndex] = array_replace($ctCustomersForAction[$customerIndex], [
+                'name'=>$name, 'contact_person'=>chemtechText($_POST['contact_person'] ?? '', 120),
+                'phone'=>whatsappCandidatePhone((string) ($_POST['phone'] ?? '')), 'email'=>strtolower(chemtechText($_POST['email'] ?? '', 160)),
+                'gstin'=>$gstin, 'state'=>chemtechText($_POST['state'] ?? '', 80), 'state_code'=>$stateCode,
+                'billing_cycle'=>$cycle, 'credit_days'=>max(0, min(365, (int) ($_POST['credit_days'] ?? 0))),
+                'address'=>chemtechText($_POST['address'] ?? '', 500), 'updated_at'=>gmdate('c')
+            ]);
+            saveJsonFile(CHEMTECH_CUSTOMERS_FILE, $ctCustomersForAction);
+            $_SESSION['notice'] = 'Customer details updated.';
+            header('Location: ?business=chemtech&page=customers&customer=' . rawurlencode($customerId));
+            exit;
+        }
+
         if (isset($_POST['add_chemtech_product'])) {
             $name = chemtechText($_POST['name'] ?? '', 120);
             $sku = strtoupper(chemtechText($_POST['sku'] ?? '', 50));

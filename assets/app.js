@@ -42,6 +42,33 @@
       });
     }
 
+    document.querySelectorAll('[data-dialog-open]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var dialog = document.getElementById(button.getAttribute('data-dialog-open'));
+        if (dialog && !button.disabled && typeof dialog.showModal === 'function') dialog.showModal();
+      });
+    });
+    document.querySelectorAll('[data-dialog-close]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var dialog = button.closest('dialog');
+        if (dialog) dialog.close();
+      });
+    });
+    document.querySelectorAll('.ct-dialog').forEach(function (dialog) {
+      dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close(); });
+    });
+
+    document.querySelectorAll('[data-ct-table-filter]').forEach(function (input) {
+      input.addEventListener('input', function () {
+        var table = document.getElementById(input.getAttribute('data-ct-table-filter'));
+        var query = input.value.trim().toLowerCase();
+        if (!table) return;
+        table.querySelectorAll('tbody tr').forEach(function (row) {
+          row.hidden = query !== '' && !row.textContent.toLowerCase().includes(query);
+        });
+      });
+    });
+
     var invoiceForm = document.querySelector('[data-ct-invoice-form]');
     if (invoiceForm) {
       var invoiceChoices = Array.from(invoiceForm.querySelectorAll('.ct-select-list label'));

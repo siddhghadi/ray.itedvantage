@@ -546,6 +546,34 @@ if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === '
             chemtechRedirect('orders');
         }
 
+        if (isset($_POST['update_chemtech_order_price'])) {
+            $orderId = (string) ($_POST['order_id'] ?? '');
+            $orderIndex = null;
+            foreach ($ctOrdersForAction as $index => $order) {
+                if (hash_equals((string) ($order['id'] ?? ''), $orderId)) { $orderIndex = $index; break; }
+            }
+            if ($orderIndex === null) throw new RuntimeException('Order not found.');
+            if (($ctOrdersForAction[$orderIndex]['billing_status'] ?? 'unbilled') !== 'unbilled') throw new RuntimeException('This order is already invoiced. Its price is locked to protect the invoice.');
+            $unitPrice = chemtechMoneyToPaise($_POST['unit_price'] ?? 0);
+            if ($unitPrice <= 0) throw new RuntimeException('Enter a valid unit price.');
+            $customer = chemtechFind($ctCustomersForAction, (string) ($ctOrdersForAction[$orderIndex]['customer_id'] ?? ''));
+            if (!$customer) throw new RuntimeException('Customer not found.');
+            $totals = chemtechOrderTotals(
+                ['gst_rate_bps'=>(int) ($ctOrdersForAction[$orderIndex]['gst_rate_bps'] ?? 0)],
+                (int) ($ctOrdersForAction[$orderIndex]['quantity_milli'] ?? 0),
+                $unitPrice,
+                (string) ($ctSettingsForAction['state_code'] ?? ''),
+                (string) ($customer['state_code'] ?? '')
+            );
+            $ctOrdersForAction[$orderIndex] = array_replace($ctOrdersForAction[$orderIndex], $totals, [
+                'unit_price_paise'=>$unitPrice,
+                'updated_at'=>gmdate('c'),
+            ]);
+            saveJsonFile(CHEMTECH_ORDERS_FILE, $ctOrdersForAction);
+            $_SESSION['notice'] = ($ctOrdersForAction[$orderIndex]['order_number'] ?? 'Order') . ' price and GST totals updated.';
+            chemtechRedirect('orders');
+        }
+
         if (isset($_POST['create_chemtech_invoice'])) {
             $selectedIds = array_values(array_filter(array_map('strval', (array) ($_POST['order_ids'] ?? []))));
             if (!$selectedIds) throw new RuntimeException('Select one or more unbilled orders.');

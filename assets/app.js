@@ -58,6 +58,23 @@
       dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close(); });
     });
 
+    var editOrderDialog = document.getElementById('ct-edit-order-dialog');
+    if (editOrderDialog) {
+      var editOrderId = editOrderDialog.querySelector('[data-ct-edit-order-id]');
+      var editOrderNumber = editOrderDialog.querySelector('[data-ct-edit-order-number]');
+      var editOrderPrice = editOrderDialog.querySelector('[data-ct-edit-order-price]');
+      document.querySelectorAll('[data-ct-edit-order]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          editOrderId.value = button.dataset.orderId || '';
+          editOrderNumber.textContent = button.dataset.orderNumber || 'Order';
+          editOrderPrice.value = button.dataset.unitPrice || '';
+          editOrderDialog.showModal();
+          editOrderPrice.focus();
+          editOrderPrice.select();
+        });
+      });
+    }
+
     document.querySelectorAll('.ct-index .ct-table[id]').forEach(function (table) {
       var rows = Array.from(table.querySelectorAll('tbody tr'));
       var input = document.querySelector('[data-ct-table-filter="' + table.id + '"]');

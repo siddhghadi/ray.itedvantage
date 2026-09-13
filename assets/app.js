@@ -27,6 +27,16 @@
     var chemtechSidebar = document.querySelector('[data-ct-sidebar]');
     if (chemtechSidebar) {
       root.dataset.ctSidebar = localStorage.getItem('chemtech-sidebar') || 'open';
+      function updateSidebarButton() {
+        var toggle = chemtechSidebar.querySelector('[data-ct-sidebar-toggle]');
+        if (!toggle) return;
+        var collapsed = root.dataset.ctSidebar === 'collapsed';
+        toggle.textContent = collapsed ? '›' : '‹';
+        toggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.title = collapsed ? 'Expand navigation' : 'Collapse navigation';
+      }
+      updateSidebarButton();
       document.querySelectorAll('[data-ct-sidebar-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
           if (window.matchMedia('(max-width: 760px)').matches) {
@@ -35,6 +45,7 @@
           }
           root.dataset.ctSidebar = root.dataset.ctSidebar === 'collapsed' ? 'open' : 'collapsed';
           localStorage.setItem('chemtech-sidebar', root.dataset.ctSidebar);
+          updateSidebarButton();
         });
       });
       chemtechSidebar.querySelectorAll('a').forEach(function (link) {

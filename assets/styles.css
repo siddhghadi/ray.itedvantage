@@ -607,6 +607,10 @@ html[data-ct-sidebar="collapsed"] .ct-workspace { grid-template-columns:62px min
 html[data-ct-sidebar="collapsed"] .ct-brand { padding-inline:10px; }
 html[data-ct-sidebar="collapsed"] .ct-sidebar nav a { min-height:8px; margin:7px 10px; padding:0; background:#777; border-radius:999px; }
 html[data-ct-sidebar="collapsed"] .ct-sidebar nav a.active { background:#faa61d; }
+@media (min-width:761px) {
+  html[data-ct-sidebar="collapsed"] .ct-brand { flex-direction:column; gap:8px; padding:10px 0; }
+  html[data-ct-sidebar="collapsed"] .ct-brand button { display:grid; place-items:center; flex-shrink:0; width:34px; height:34px; }
+}
 
 html[data-theme="dark"] .ct-workspace { --ct-bg:#151617; --ct-surface:#202224; --ct-ink:#f1f1f1; --ct-muted:#a6a9ac; --ct-line:#35383b; --ct-accent-text:#faa61d; }
 html[data-theme="dark"] .ct-theme,html[data-theme="dark"] .ct-button { color:#eee; border-color:#494c50; background:#292b2d; }

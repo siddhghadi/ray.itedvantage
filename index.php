@@ -537,30 +537,68 @@ if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === '
         }
 
         if (isset($_POST['create_chemtech_order'])) {
+            $customerMode = (string) ($_POST['customer_mode'] ?? 'existing');
             $customerId = (string) ($_POST['customer_id'] ?? '');
-            $productId = (string) ($_POST['product_id'] ?? '');
-            $customer = chemtechFind($ctCustomersForAction, $customerId);
-            $productIndex = null;
-            foreach ($ctProductsForAction as $index => $product) if (hash_equals((string) ($product['id'] ?? ''), $productId)) { $productIndex = $index; break; }
-            $quantityMilli = (int) round(max(0, (float) ($_POST['quantity'] ?? 0)) * 1000);
-            if (!$customer || $productIndex === null || $quantityMilli <= 0) throw new RuntimeException('Choose a customer, product, and valid quantity.');
-            if ((int) ($ctProductsForAction[$productIndex]['stock_milli'] ?? 0) < $quantityMilli) throw new RuntimeException('Not enough stock for this order.');
-            $unitPrice = chemtechMoneyToPaise($_POST['unit_price'] ?? 0);
-            if ($unitPrice <= 0) $unitPrice = (int) ($ctProductsForAction[$productIndex]['sale_price_paise'] ?? 0);
-            if ($unitPrice <= 0) throw new RuntimeException('Add a valid unit price.');
-            $totals = chemtechOrderTotals($ctProductsForAction[$productIndex], $quantityMilli, $unitPrice, (string) $ctSettingsForAction['state_code'], (string) ($customer['state_code'] ?? ''));
+            $customer = $customerMode === 'one_time' ? null : chemtechFind($ctCustomersForAction, $customerId);
+            $pendingCustomer = null;
+            if ($customerMode === 'one_time') {
+                $oneTimeName = chemtechText($_POST['one_time_name'] ?? '', 120);
+                $oneTimeStateCode = preg_replace('/\D+/', '', (string) ($_POST['one_time_state_code'] ?? '')) ?? '';
+                if ($oneTimeName === '') throw new RuntimeException('Enter the one-time buyer name.');
+                if ($oneTimeStateCode !== '' && strlen($oneTimeStateCode) !== 2) throw new RuntimeException('One-time buyer state code must contain two digits.');
+                $customerId = bin2hex(random_bytes(8));
+                $pendingCustomer = [
+                    'id'=>$customerId, 'name'=>$oneTimeName, 'contact_person'=>'', 'phone'=>whatsappCandidatePhone((string) ($_POST['one_time_phone'] ?? '')),
+                    'email'=>'', 'gstin'=>'', 'state'=>'', 'state_code'=>$oneTimeStateCode ?: (string) ($ctSettingsForAction['state_code'] ?? ''),
+                    'billing_cycle'=>'per_order', 'credit_days'=>0, 'address'=>'', 'one_time'=>true, 'created_at'=>gmdate('c'),
+                ];
+                $customer = $pendingCustomer;
+            }
+            if (!$customer) throw new RuntimeException('Choose an existing customer or enter a one-time buyer.');
+
+            $itemInputs = array_values(array_filter((array) ($_POST['items'] ?? []), 'is_array'));
+            if (!$itemInputs && isset($_POST['product_id'])) $itemInputs[] = ['product_id'=>$_POST['product_id'], 'quantity'=>$_POST['quantity'] ?? 0, 'unit_price'=>$_POST['unit_price'] ?? 0];
+            if (!$itemInputs) throw new RuntimeException('Add at least one product to the order.');
+            $orderItems = [];
+            $stockDemand = [];
+            foreach ($itemInputs as $itemNumber=>$itemInput) {
+                $productId = (string) ($itemInput['product_id'] ?? '');
+                $productIndex = null;
+                foreach ($ctProductsForAction as $index=>$product) if (hash_equals((string) ($product['id'] ?? ''), $productId)) { $productIndex=$index; break; }
+                $quantityMilli = (int) round(max(0, (float) ($itemInput['quantity'] ?? 0)) * 1000);
+                if ($productIndex === null || $quantityMilli <= 0) throw new RuntimeException('Choose a product and valid quantity for every order line.');
+                $unitPrice = chemtechMoneyToPaise($itemInput['unit_price'] ?? 0);
+                if ($unitPrice <= 0) $unitPrice = (int) ($ctProductsForAction[$productIndex]['sale_price_paise'] ?? 0);
+                if ($unitPrice <= 0) throw new RuntimeException('Add a valid unit price for every product.');
+                $stockDemand[$productIndex] = ($stockDemand[$productIndex] ?? 0) + $quantityMilli;
+                $lineTotals = chemtechOrderTotals($ctProductsForAction[$productIndex], $quantityMilli, $unitPrice, (string) ($ctSettingsForAction['state_code'] ?? ''), (string) ($customer['state_code'] ?? ''));
+                $orderItems[] = array_merge($lineTotals, [
+                    'product_id'=>$productId, 'product_name'=>$ctProductsForAction[$productIndex]['name'], 'hsn'=>$ctProductsForAction[$productIndex]['hsn'],
+                    'unit'=>$ctProductsForAction[$productIndex]['unit'], 'gst_rate_bps'=>$ctProductsForAction[$productIndex]['gst_rate_bps'],
+                    'quantity_milli'=>$quantityMilli, 'unit_price_paise'=>$unitPrice,
+                ]);
+            }
+            foreach ($stockDemand as $productIndex=>$quantityMilli) {
+                if ((int) ($ctProductsForAction[$productIndex]['stock_milli'] ?? 0) < $quantityMilli) throw new RuntimeException('Not enough stock for ' . ($ctProductsForAction[$productIndex]['name'] ?? 'one selected product') . '.');
+            }
+            foreach ($stockDemand as $productIndex=>$quantityMilli) $ctProductsForAction[$productIndex]['stock_milli'] -= $quantityMilli;
+            if ($pendingCustomer) array_unshift($ctCustomersForAction, $pendingCustomer);
+            $totals = chemtechOrderAggregate($orderItems);
+            $firstItem = $orderItems[0];
             $orderNumber = 'SO-' . date('ymd') . '-' . str_pad((string) (count($ctOrdersForAction) + 1), 3, '0', STR_PAD_LEFT);
-            $ctProductsForAction[$productIndex]['stock_milli'] -= $quantityMilli;
             array_unshift($ctOrdersForAction, array_merge($totals, [
                 'id'=>bin2hex(random_bytes(8)), 'order_number'=>$orderNumber, 'customer_id'=>$customerId, 'customer_name'=>$customer['name'],
-                'product_id'=>$productId, 'product_name'=>$ctProductsForAction[$productIndex]['name'], 'hsn'=>$ctProductsForAction[$productIndex]['hsn'],
-                'unit'=>$ctProductsForAction[$productIndex]['unit'], 'gst_rate_bps'=>$ctProductsForAction[$productIndex]['gst_rate_bps'],
-                'quantity_milli'=>$quantityMilli, 'unit_price_paise'=>$unitPrice, 'status'=>'confirmed', 'billing_status'=>'unbilled', 'invoice_id'=>'',
+                'product_id'=>count($orderItems)===1?$firstItem['product_id']:'', 'product_name'=>count($orderItems)===1?$firstItem['product_name']:count($orderItems).' products',
+                'hsn'=>count($orderItems)===1?$firstItem['hsn']:'', 'unit'=>count($orderItems)===1?$firstItem['unit']:'mixed',
+                'gst_rate_bps'=>count($orderItems)===1?$firstItem['gst_rate_bps']:0, 'quantity_milli'=>array_sum(array_column($orderItems,'quantity_milli')),
+                'unit_price_paise'=>count($orderItems)===1?$firstItem['unit_price_paise']:0, 'items'=>$orderItems,
+                'status'=>'confirmed', 'billing_status'=>'unbilled', 'invoice_id'=>'',
                 'created_at'=>gmdate('c')
             ]));
+            if ($pendingCustomer) saveJsonFile(CHEMTECH_CUSTOMERS_FILE, $ctCustomersForAction);
             saveJsonFile(CHEMTECH_PRODUCTS_FILE, $ctProductsForAction);
             saveJsonFile(CHEMTECH_ORDERS_FILE, $ctOrdersForAction);
-            $_SESSION['notice'] = $orderNumber . ' created and stock updated.';
+            $_SESSION['notice'] = $orderNumber . ' created with ' . count($orderItems) . ' product' . (count($orderItems)===1?'':'s') . ' and stock updated.';
             chemtechRedirect('orders');
         }
 
@@ -572,19 +610,27 @@ if ($isAuthenticated && $view === 'chemtech' && $_SERVER['REQUEST_METHOD'] === '
             }
             if ($orderIndex === null) throw new RuntimeException('Order not found.');
             if (($ctOrdersForAction[$orderIndex]['billing_status'] ?? 'unbilled') !== 'unbilled') throw new RuntimeException('This order is already invoiced. Its price is locked to protect the invoice.');
-            $unitPrice = chemtechMoneyToPaise($_POST['unit_price'] ?? 0);
-            if ($unitPrice <= 0) throw new RuntimeException('Enter a valid unit price.');
             $customer = chemtechFind($ctCustomersForAction, (string) ($ctOrdersForAction[$orderIndex]['customer_id'] ?? ''));
             if (!$customer) throw new RuntimeException('Customer not found.');
-            $totals = chemtechOrderTotals(
-                ['gst_rate_bps'=>(int) ($ctOrdersForAction[$orderIndex]['gst_rate_bps'] ?? 0)],
-                (int) ($ctOrdersForAction[$orderIndex]['quantity_milli'] ?? 0),
-                $unitPrice,
-                (string) ($ctSettingsForAction['state_code'] ?? ''),
-                (string) ($customer['state_code'] ?? '')
-            );
+            $orderItems = chemtechOrderItems($ctOrdersForAction[$orderIndex]);
+            $postedPrices = array_values((array) ($_POST['item_prices'] ?? []));
+            if (!$postedPrices && isset($_POST['unit_price'])) $postedPrices[] = $_POST['unit_price'];
+            if (count($postedPrices) !== count($orderItems)) throw new RuntimeException('Enter a price for every product in this order.');
+            foreach ($orderItems as $itemIndex=>&$item) {
+                $unitPrice = chemtechMoneyToPaise($postedPrices[$itemIndex] ?? 0);
+                if ($unitPrice <= 0) throw new RuntimeException('Enter a valid unit price for every product.');
+                $itemTotals = chemtechOrderTotals(['gst_rate_bps'=>(int) ($item['gst_rate_bps'] ?? 0)], (int) ($item['quantity_milli'] ?? 0), $unitPrice, (string) ($ctSettingsForAction['state_code'] ?? ''), (string) ($customer['state_code'] ?? ''));
+                $item = array_replace($item, $itemTotals, ['unit_price_paise'=>$unitPrice]);
+            }
+            unset($item);
+            $totals = chemtechOrderAggregate($orderItems);
+            $firstItem = $orderItems[0];
             $ctOrdersForAction[$orderIndex] = array_replace($ctOrdersForAction[$orderIndex], $totals, [
-                'unit_price_paise'=>$unitPrice,
+                'items'=>$orderItems, 'product_id'=>count($orderItems)===1?$firstItem['product_id']:'',
+                'product_name'=>count($orderItems)===1?$firstItem['product_name']:count($orderItems).' products',
+                'hsn'=>count($orderItems)===1?$firstItem['hsn']:'', 'unit'=>count($orderItems)===1?$firstItem['unit']:'mixed',
+                'gst_rate_bps'=>count($orderItems)===1?$firstItem['gst_rate_bps']:0,
+                'unit_price_paise'=>count($orderItems)===1?$firstItem['unit_price_paise']:0,
                 'updated_at'=>gmdate('c'),
             ]);
             saveJsonFile(CHEMTECH_ORDERS_FILE, $ctOrdersForAction);

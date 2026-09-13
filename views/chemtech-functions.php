@@ -217,3 +217,29 @@ function chemtechOrderTotals(array $product, int $quantityMilli, int $unitPriceP
         'tax_type' => $interstate ? 'IGST' : 'CGST + SGST',
     ];
 }
+
+function chemtechOrderItems(array $order): array
+{
+    if (!empty($order['items']) && is_array($order['items'])) {
+        return array_values(array_filter($order['items'], 'is_array'));
+    }
+    if (empty($order['product_id']) && empty($order['product_name'])) return [];
+    return [[
+        'product_id'=>(string) ($order['product_id'] ?? ''), 'product_name'=>(string) ($order['product_name'] ?? ''),
+        'hsn'=>(string) ($order['hsn'] ?? ''), 'unit'=>(string) ($order['unit'] ?? ''),
+        'gst_rate_bps'=>(int) ($order['gst_rate_bps'] ?? 0), 'quantity_milli'=>(int) ($order['quantity_milli'] ?? 0),
+        'unit_price_paise'=>(int) ($order['unit_price_paise'] ?? 0), 'subtotal_paise'=>(int) ($order['subtotal_paise'] ?? 0),
+        'cgst_paise'=>(int) ($order['cgst_paise'] ?? 0), 'sgst_paise'=>(int) ($order['sgst_paise'] ?? 0),
+        'igst_paise'=>(int) ($order['igst_paise'] ?? 0), 'total_paise'=>(int) ($order['total_paise'] ?? 0),
+        'tax_type'=>(string) ($order['tax_type'] ?? ''),
+    ]];
+}
+
+function chemtechOrderAggregate(array $items): array
+{
+    $subtotal = array_sum(array_map(static fn(array $item): int => (int) ($item['subtotal_paise'] ?? 0), $items));
+    $cgst = array_sum(array_map(static fn(array $item): int => (int) ($item['cgst_paise'] ?? 0), $items));
+    $sgst = array_sum(array_map(static fn(array $item): int => (int) ($item['sgst_paise'] ?? 0), $items));
+    $igst = array_sum(array_map(static fn(array $item): int => (int) ($item['igst_paise'] ?? 0), $items));
+    return ['subtotal_paise'=>$subtotal, 'cgst_paise'=>$cgst, 'sgst_paise'=>$sgst, 'igst_paise'=>$igst, 'total_paise'=>$subtotal+$cgst+$sgst+$igst, 'tax_type'=>$igst>0?'IGST':'CGST + SGST'];
+}

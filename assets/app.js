@@ -62,17 +62,80 @@
     if (editOrderDialog) {
       var editOrderId = editOrderDialog.querySelector('[data-ct-edit-order-id]');
       var editOrderNumber = editOrderDialog.querySelector('[data-ct-edit-order-number]');
-      var editOrderPrice = editOrderDialog.querySelector('[data-ct-edit-order-price]');
+      var editOrderItems = editOrderDialog.querySelector('[data-ct-edit-order-items]');
+      var orderRecords = readJson('ct-order-records');
       document.querySelectorAll('[data-ct-edit-order]').forEach(function (button) {
         button.addEventListener('click', function () {
+          var order = orderRecords[button.dataset.orderId] || { items: [] };
           editOrderId.value = button.dataset.orderId || '';
           editOrderNumber.textContent = button.dataset.orderNumber || 'Order';
-          editOrderPrice.value = button.dataset.unitPrice || '';
+          editOrderItems.innerHTML = (order.items || []).map(function (item) {
+            return '<label>' + escapeMarkup(item.product_name || 'Product') + '<small>' + (Number(item.quantity_milli || 0) / 1000).toLocaleString('en-IN', { maximumFractionDigits: 3 }) + ' ' + escapeMarkup(item.unit || '') + '</small><input type="number" name="item_prices[]" min=".01" step=".01" value="' + (Number(item.unit_price_paise || 0) / 100).toFixed(2) + '" required></label>';
+          }).join('');
           editOrderDialog.showModal();
-          editOrderPrice.focus();
-          editOrderPrice.select();
+          var firstPrice = editOrderItems.querySelector('input');
+          if (firstPrice) { firstPrice.focus(); firstPrice.select(); }
         });
       });
+    }
+
+    var orderForm = document.querySelector('[data-ct-order-form]');
+    if (orderForm) {
+      var orderItems = orderForm.querySelector('[data-ct-order-items]');
+      var orderItemTemplate = document.getElementById('ct-order-item-template');
+      var orderLineIndex = orderItems.querySelectorAll('[data-ct-order-item]').length;
+
+      function refreshOrderLineControls() {
+        var lines = Array.from(orderItems.querySelectorAll('[data-ct-order-item]'));
+        lines.forEach(function (line) {
+          var remove = line.querySelector('[data-ct-remove-order-item]');
+          if (remove) remove.hidden = lines.length === 1;
+        });
+      }
+
+      function bindOrderLine(line) {
+        var product = line.querySelector('[data-ct-order-product]');
+        var price = line.querySelector('[data-ct-order-price]');
+        var remove = line.querySelector('[data-ct-remove-order-item]');
+        if (product) product.addEventListener('change', function () {
+          var option = product.options[product.selectedIndex];
+          if (price) price.value = option && option.dataset.price ? option.dataset.price : '';
+        });
+        if (remove) remove.addEventListener('click', function () {
+          line.remove();
+          refreshOrderLineControls();
+        });
+      }
+
+      orderItems.querySelectorAll('[data-ct-order-item]').forEach(bindOrderLine);
+      var addOrderItem = orderForm.querySelector('[data-ct-add-order-item]');
+      if (addOrderItem && orderItemTemplate) addOrderItem.addEventListener('click', function () {
+        var holder = document.createElement('div');
+        holder.innerHTML = orderItemTemplate.innerHTML.replace(/__INDEX__/g, String(orderLineIndex++));
+        var line = holder.firstElementChild;
+        orderItems.appendChild(line);
+        bindOrderLine(line);
+        refreshOrderLineControls();
+        line.querySelector('select').focus();
+      });
+
+      var customerModes = orderForm.querySelectorAll('[name="customer_mode"]');
+      function syncCustomerMode() {
+        var selected = orderForm.querySelector('[name="customer_mode"]:checked');
+        var mode = selected ? selected.value : 'existing';
+        orderForm.querySelectorAll('[data-ct-customer-mode]').forEach(function (section) {
+          var active = section.dataset.ctCustomerMode === mode;
+          section.hidden = !active;
+          section.querySelectorAll('input,select').forEach(function (field) { field.disabled = !active; });
+        });
+        var existingCustomer = orderForm.querySelector('[name="customer_id"]');
+        var oneTimeName = orderForm.querySelector('[name="one_time_name"]');
+        if (existingCustomer) existingCustomer.required = mode === 'existing';
+        if (oneTimeName) oneTimeName.required = mode === 'one_time';
+      }
+      customerModes.forEach(function (radio) { radio.addEventListener('change', syncCustomerMode); });
+      syncCustomerMode();
+      refreshOrderLineControls();
     }
 
     function readJson(id) {

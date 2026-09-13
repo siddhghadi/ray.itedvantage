@@ -895,7 +895,7 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
             <form method="post"><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>"><button class="logout" type="submit" name="logout" value="1">Sign out</button></form>
         </header>
         <main class="dashboard">
-            <section class="welcome"><span class="eyebrow">YOUR WORKSPACE</span><h1>Good to see you, Siddh.</h1><p>Choose a business to start working.</p></section>
+            <section class="welcome"><span class="eyebrow">YOUR WORKSPACE</span><h1>Welcome back, Siddh 👋</h1><p>Choose a business to start working.</p></section>
             <section class="business-grid" aria-label="Businesses">
                 <a class="business-card tech" href="?business=techdecodes"><span class="card-icon">TD</span><div><h2>TechDecodes</h2><p>Digital marketing</p></div><span class="status">Open workspace →</span></a>
                 <a class="business-card it" href="?business=itedvantage"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Blogs & digital products</p></div><span class="status">Open workspace →</span></a>

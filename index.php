@@ -767,6 +767,10 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#faa61d">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/assets/ray-192.png">
+    <script defer src="/assets/install.js?v=1"></script>
     <title><?= $isAuthenticated ? 'Dashboard' : ($isSetup ? 'Sign in' : 'Set up access') ?> · Ray CRM</title>
     <link rel="stylesheet" href="assets/styles.css?v=<?= (int) filemtime(__DIR__ . '/assets/styles.css') ?>">
     <?php if($isAuthenticated): $safeChemtechAccent = '#faa61d'; ?>
@@ -785,6 +789,7 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <?php endif; ?>
 </head>
 <body class="<?= $isAuthenticated ? 'app-page' : 'auth-page' ?>">
+<button id="ray-install" type="button" hidden>Install RAY CRM</button>
 <?php if (!$isAuthenticated): ?>
     <main class="auth-shell">
         <section class="brand-panel">

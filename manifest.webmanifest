@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "RAY CRM",
+  "short_name": "RAY CRM",
+  "description": "Your businesses, customers and orders in one workspace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#151617",
+  "theme_color": "#faa61d",
+  "icons": [
+    { "src": "/assets/ray-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/assets/ray-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -13,7 +13,7 @@
   .ct-topbar .ct-heading { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:8px; min-width:0; }
   .ct-topbar h1 { margin:0; font-size:17px; color:#231c0e; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ct-topbar p,.ct-topbar .ct-breadcrumb { display:none; }
-  .ct-mobile-menu { margin:0; padding:8px 10px; min-height:40px; color:#231c0e; border:0; background:#faa61d; border-radius:999px; font-size:12px; }
+  .ct-mobile-menu { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; margin:0; padding:0 10px; height:40px; min-height:40px; color:#231c0e; border:0; background:#faa61d; border-radius:999px; font-size:12px; line-height:1; text-align:center; }
   .ct-top-actions { display:flex; gap:6px; }
   .ct-mobile-refresh,.ct-topbar .ct-theme { display:grid; place-items:center; width:40px; height:40px; padding:0; border:1px solid #faa61d26; border-radius:50%; color:#231c0e; background:#ffffff70; font-size:23px; }
   .ct-topbar .ct-top-actions { flex-shrink:0; }

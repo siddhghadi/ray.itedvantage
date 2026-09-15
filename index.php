@@ -784,6 +784,8 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <script defer src="assets/rangoli-products.js?v=<?= (int) filemtime(__DIR__ . '/assets/rangoli-products.js') ?>"></script>
     <?php endif; ?>
     <?php if($isAuthenticated && $view === 'chemtech'): ?>
+    <link rel="stylesheet" href="assets/chemtech-mobile.css?v=<?= (int) filemtime(__DIR__ . '/assets/chemtech-mobile.css') ?>">
+    <script defer src="assets/chemtech-mobile.js?v=<?= (int) filemtime(__DIR__ . '/assets/chemtech-mobile.js') ?>"></script>
     <script defer src="assets/pdf-lib.min.js"></script>
     <script defer src="assets/chemtech-invoice.js?v=<?= (int) filemtime(__DIR__ . '/assets/chemtech-invoice.js') ?>"></script>
     <?php endif; ?>

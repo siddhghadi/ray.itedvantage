@@ -32,6 +32,12 @@ $nav = [
             <div class="header-actions"><a class="ghost-button button-link" href="?business=techdecodes&page=email">Bulk email</a><a class="primary-button button-link" href="?business=techdecodes&page=leads">＋ Import leads</a></div>
         </header>
         <?php if ($notice !== ''): ?><div class="td-notice"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
+        <?php if ($tdPage === 'leads'): ?>
+            <form method="post" class="header-actions">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
+                <button class="ghost-button" type="submit" name="export_techdecodes" value="1">Download full lead backup</button>
+            </form>
+        <?php endif; ?>
 
         <?php if ($tdPage === 'dashboard'): ?>
             <section class="metric-grid" aria-label="Business overview">

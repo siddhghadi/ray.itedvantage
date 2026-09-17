@@ -267,6 +267,22 @@ $notice = '';
 if ($isAuthenticated && $view === 'techdecodes' && $_SERVER['REQUEST_METHOD'] === 'POST' && validCsrf()) {
     try {
         $leadsForAction = loadLeads();
+        if (isset($_POST['export_techdecodes'])) {
+            $backup = [
+                'format' => 'ray-techdecodes-backup', 'version' => 1,
+                'exported_at' => gmdate('c'), 'lead_count' => count($leadsForAction),
+                'leads' => $leadsForAction,
+                'activities' => loadJsonFile(ACTIVITIES_FILE),
+                'campaigns' => loadJsonFile(CAMPAIGNS_FILE),
+                'calendar' => array_values(array_filter(loadJsonFile(CONTENT_CALENDAR_FILE), static fn(array $item): bool => ($item['business'] ?? '') === 'techdecodes')),
+            ];
+            $payload = json_encode($backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Content-Disposition: attachment; filename="techdecodes-backup-' . gmdate('Y-m-d-His') . '.json"');
+            header('Cache-Control: no-store, private');
+            echo $payload;
+            exit;
+        }
         if (isset($_POST['import_leads'])) {
             $file = $_FILES['lead_file'] ?? null;
             if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 10 * 1024 * 1024) throw new RuntimeException('Choose a CSV file smaller than 10 MB.');

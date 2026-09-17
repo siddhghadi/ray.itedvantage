@@ -15,6 +15,23 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    var leadTable = document.querySelector('.lead-table');
+    if (leadTable && leadTable.querySelector('input[name="lead_ids[]"]')) {
+      var selectAllLeads = document.createElement('input');
+      selectAllLeads.type = 'checkbox';
+      selectAllLeads.setAttribute('aria-label', 'Select all listed leads');
+      leadTable.querySelector('thead th').appendChild(selectAllLeads);
+      selectAllLeads.addEventListener('change', function () {
+        leadTable.querySelectorAll('input[name="lead_ids[]"]').forEach(function (box) { box.checked = selectAllLeads.checked; });
+      });
+      leadTable.addEventListener('change', function (event) {
+        if (event.target === selectAllLeads) return;
+        var boxes = Array.from(leadTable.querySelectorAll('input[name="lead_ids[]"]'));
+        var selected = boxes.filter(function (box) { return box.checked; }).length;
+        selectAllLeads.checked = selected === boxes.length;
+        selectAllLeads.indeterminate = selected > 0 && selected < boxes.length;
+      });
+    }
     updateButton();
     var buttons = document.querySelectorAll('[data-theme-toggle]');
     buttons.forEach(function (button) { button.addEventListener('click', function () {

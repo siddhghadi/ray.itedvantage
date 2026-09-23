@@ -262,6 +262,21 @@ $isSetup = $auth !== null;
 $requestedBusiness = (string) ($_GET['business'] ?? '');
 $view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli','chemtech','construction','hospitality','insurance'], true) ? $requestedBusiness : 'home';
 if ($isAuthenticated && $view === 'construction') {
+    if (isset($_GET['migration_check'])) {
+        header('Content-Type: application/json');
+        header('Cache-Control: no-store');
+        $constructionCheck = ['entry_file' => is_file(__DIR__ . '/construction/index.php'), 'config_file' => is_file(__DIR__ . '/construction/config.php')];
+        try {
+            $constructionConfig = require __DIR__ . '/construction/config.php';
+            $constructionDb = new PDO(sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $constructionConfig['db_host'], $constructionConfig['db_port'], $constructionConfig['db_name']), $constructionConfig['db_user'], $constructionConfig['db_password'], [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+            $constructionCheck['database'] = 'connected';
+            $constructionOwner = $constructionDb->prepare('SELECT COUNT(DISTINCT u.id) FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN roles r ON r.id=ur.role_id AND r.company_id=u.company_id WHERE LOWER(u.email)=? AND u.status="active" AND r.code="OWNER" AND ur.scope_type="company"');
+            $constructionOwner->execute([strtolower($auth['email'])]);
+            $constructionCheck['owner_matches'] = (int)$constructionOwner->fetchColumn();
+        } catch (Throwable $migrationCheckError) { $constructionCheck['database'] = 'unavailable'; error_log($migrationCheckError->getMessage()); }
+        echo json_encode($constructionCheck);
+        exit;
+    }
     header('Location: ./construction/');
     exit;
 }

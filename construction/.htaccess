@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+RewriteRule ^(?:config\.php|config\.example\.php|database/|src/|storage/) - [F,L,NC]
+<FilesMatch "\.(sql|log|ini)$">
+  Require all denied
+</FilesMatch>

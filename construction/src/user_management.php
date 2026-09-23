@@ -1,0 +1,21 @@
+<?php
+declare(strict_types=1);
+function ensure_default_roles(PDO $db):void{
+ $templates=[
+  'OPERATIONS_HEAD'=>['Operations Head / Administration','Monitors all sites, material operations, purchases, transfers and reports without Super Admin settings',['dashboard.view','projects.view','materials.view','vendors.view','purchases.view','reports.view','reports.export','notifications.view','approvals.view','audit.view']],
+  'SITE_SUPERVISOR'=>['Site Supervisor','Manages material, purchasing, transfers and operators only for assigned sites',['dashboard.view','projects.view','materials.view','materials.manage','vendors.view','vendors.manage','purchases.view','purchases.manage','reports.view','reports.export','notifications.view','approvals.view','approvals.manage']],
+  'SITE_OPERATOR'=>['Site Operator','Works only on one assigned site using permissions granted by the supervisor',['dashboard.view','projects.view','materials.view','reports.view','notifications.view']]
+ ];
+ $companies=$db->query('SELECT id FROM companies')->fetchAll(PDO::FETCH_COLUMN);
+ foreach($companies as $companyId)foreach($templates as $code=>[$name,$description,$permissions]){
+  $q=$db->prepare('SELECT id FROM roles WHERE company_id=? AND code=?');$q->execute([$companyId,$code]);$roleId=$q->fetchColumn();
+  if(!$roleId){$roleId=id26();$db->prepare('INSERT INTO roles(id,company_id,name,code,description,is_system) VALUES(?,?,?,?,?,1)')->execute([$roleId,$companyId,$name,$code,$description]);}else{$db->prepare('UPDATE roles SET name=?,description=?,is_system=1 WHERE id=?')->execute([$name,$description,$roleId]);}
+  foreach($permissions as $key){$p=$db->prepare('SELECT id FROM permissions WHERE permission_key=?');$p->execute([$key]);if($pid=$p->fetchColumn())$db->prepare('INSERT IGNORE INTO role_permissions(role_id,permission_id) VALUES(?,?)')->execute([$roleId,$pid]);}
+ }
+}
+function save_user_access(PDO $db,array $actor):array{
+ if(!can($db,$actor,'users.update')||!can($db,$actor,'roles.manage')){http_response_code(403);exit('Forbidden');}
+ $target=field('user_id');$q=$db->prepare('SELECT id FROM users WHERE id=? AND company_id=?');$q->execute([$target,$actor['company_id']]);if(!$q->fetchColumn())return['error'=>'Choose a valid user.'];
+ $roleIds=array_values(array_unique(array_filter(array_map('strval',(array)($_POST['role_ids']??[])))));$projectIds=array_values(array_unique(array_filter(array_map('strval',(array)($_POST['project_ids']??[])))));$status=field('user_status');if(!in_array($status,['active','suspended'],true))$status='active';
+ try{$db->beginTransaction();$validRoles=[];$rq=$db->prepare('SELECT id,code FROM roles WHERE id=? AND company_id=?');foreach($roleIds as $id){$rq->execute([$id,$actor['company_id']]);if($r=$rq->fetch())$validRoles[$r['id']]=$r['code'];}if($target===$actor['id']&&!in_array('OWNER',$validRoles,true))throw new DomainException('You cannot remove your own Company Owner role.');$db->prepare('DELETE ur FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id=? AND r.company_id=? AND ur.scope_type="company"')->execute([$target,$actor['company_id']]);$ins=$db->prepare('INSERT INTO user_roles(id,user_id,role_id,scope_type) VALUES(?,?,?,"company")');foreach(array_keys($validRoles) as $roleId)$ins->execute([id26(),$target,$roleId]);$db->prepare('DELETE up FROM user_projects up JOIN projects p ON p.id=up.project_id WHERE up.user_id=? AND p.company_id=?')->execute([$target,$actor['company_id']]);$pq=$db->prepare('SELECT id FROM projects WHERE id=? AND company_id=?');$pi=$db->prepare('INSERT INTO user_projects(user_id,project_id) VALUES(?,?)');foreach($projectIds as $projectId){$pq->execute([$projectId,$actor['company_id']]);if($pq->fetchColumn())$pi->execute([$target,$projectId]);}$db->prepare('UPDATE users SET designation=?,phone=?,status=? WHERE id=? AND company_id=?')->execute([field('designation'),field('phone'),$status,$target,$actor['company_id']]);$db->commit();audit($db,$actor,'users','access_update',$target);return['success'=>'User access updated successfully.'];}catch(DomainException $e){if($db->inTransaction())$db->rollBack();return['error'=>$e->getMessage()];}catch(Throwable $e){if($db->inTransaction())$db->rollBack();error_log($e->getMessage());return['error'=>'User access could not be updated.'];}
+}

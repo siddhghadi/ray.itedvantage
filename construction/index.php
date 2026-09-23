@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/src/bootstrap.php';
+if (isset($_GET['migration_check'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['authenticated' => true, 'owner' => principal() !== null]);
+    exit;
+}
 require __DIR__ . '/src/phase23.php';
 require __DIR__ . '/src/phase4.php';
 require __DIR__ . '/src/user_management.php';

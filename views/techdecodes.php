@@ -16,20 +16,18 @@ $nav = [
     'revenue' => ['↗','Revenue'], 'email' => ['✉','Bulk Email'], 'activity' => ['✓','Activities'], 'calendar' => ['□','Calendar'], 'settings' => ['⚙','Settings'],
 ];
 ?>
-<div class="workspace-shell">
-    <aside class="side-nav td-side-wide">
-        <a class="side-logo ray-wordmark" href="./" aria-label="Ray CRM home">RAY</a>
+<div class="ct-workspace td-professional">
+    <aside class="ct-sidebar" data-ct-sidebar>
+        <div class="ct-brand"><span>TD</span><strong>TechDecodes</strong><button type="button" data-ct-sidebar-toggle aria-label="Collapse navigation">‹</button></div>
         <nav aria-label="TechDecodes navigation">
-            <?php foreach ($nav as $key => [$icon,$label]): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&page=<?= $key ?>" title="<?= htmlspecialchars($label) ?>"><small><?= htmlspecialchars($label) ?></small></a><?php endforeach; ?>
+            <?php foreach (['Overview'=>['dashboard'],'Sales'=>['leads','email'],'Money'=>['payments','revenue'],'Planning'=>['activity','calendar'],'Admin'=>['settings']] as $group=>$pages): ?><section><small><?= $group ?></small><?php foreach ($pages as $key): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&amp;page=<?= $key ?>"><b><?= htmlspecialchars($nav[$key][1]) ?></b></a><?php endforeach; ?></section><?php endforeach; ?>
         </nav>
-        <button class="theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode" title="Light / dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button>
-        <a class="side-bottom" href="./" title="All businesses">⌘</a>
+        <a class="ct-back" href="./"><span>←</span><b>All businesses</b></a>
     </aside>
-    <main class="td-dashboard">
-        <nav class="desktop-menu" aria-label="TechDecodes desktop navigation"><a class="desktop-brand" href="./">RAY</a><div><?php foreach ($nav as $key => [$icon,$label]): ?><a class="<?= $tdPage === $key ? 'active' : '' ?>" href="?business=techdecodes&page=<?= $key ?>"><?= htmlspecialchars($label) ?></a><?php endforeach; ?></div><button class="theme-toggle desktop-theme-toggle" data-theme-toggle type="button" aria-label="Switch light and dark mode"><span aria-hidden="true">☼</span><small>Theme</small></button></nav>
-        <header class="td-header">
-            <div><a class="back-link" href="./">← All businesses</a><span class="eyebrow">TECHDECODES / <?= strtoupper(htmlspecialchars($tdPage)) ?></span><h1><?= htmlspecialchars($meta[0]) ?></h1><p><?= htmlspecialchars($meta[1]) ?></p></div>
-            <div class="header-actions"><a class="ghost-button button-link" href="?business=techdecodes&page=email">Bulk email</a><a class="primary-button button-link" href="?business=techdecodes&page=leads">＋ Import leads</a></div>
+    <main class="ct-main">
+        <header class="ct-topbar">
+            <div class="ct-heading"><button class="ct-mobile-menu" type="button" data-ct-sidebar-toggle aria-label="Open navigation">Menu</button><span class="ct-breadcrumb">TechDecodes / <?= htmlspecialchars($nav[$tdPage][1]) ?></span><h1><?= htmlspecialchars($nav[$tdPage][1]) ?></h1><p><?= htmlspecialchars($meta[1]) ?></p></div>
+            <div class="ct-top-actions"><button class="ct-theme" data-theme-toggle type="button" aria-label="Switch theme"><span>☼</span></button><a class="ct-button primary" href="?business=techdecodes&page=leads">Import leads</a></div>
         </header>
         <?php if ($notice !== ''): ?><div class="td-notice"><?= htmlspecialchars($notice) ?></div><?php endif; ?>
         <?php if ($tdPage === 'leads'): ?>

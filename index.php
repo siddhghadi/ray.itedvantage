@@ -793,6 +793,11 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
     <style nonce="<?= htmlspecialchars($cspNonce) ?>">.ct-workspace{--ct-accent:<?= htmlspecialchars($safeChemtechAccent) ?>}.business-card.chem{--chemtech-accent:<?= htmlspecialchars($safeChemtechAccent) ?>}</style>
     <?php endif; ?>
     <script defer src="assets/app.js?v=<?= (int) filemtime(__DIR__ . '/assets/app.js') ?>"></script>
+    <?php if($isAuthenticated && $view === 'techdecodes'): ?>
+    <link rel="stylesheet" href="assets/chemtech-mobile.css?v=<?= (int) filemtime(__DIR__ . '/assets/chemtech-mobile.css') ?>">
+    <link rel="stylesheet" href="assets/techdecodes-layout.css?v=<?= (int) filemtime(__DIR__ . '/assets/techdecodes-layout.css') ?>">
+    <script defer src="assets/chemtech-mobile.js?v=<?= (int) filemtime(__DIR__ . '/assets/chemtech-mobile.js') ?>"></script>
+    <?php endif; ?>
     <?php if($isAuthenticated && $view === 'rangoli' && $rangoliPage === 'products'): ?>
     <link rel="stylesheet" href="assets/rangoli-products.css?v=<?= (int) filemtime(__DIR__ . '/assets/rangoli-products.css') ?>">
     <script defer src="assets/pdf-lib.min.js"></script>

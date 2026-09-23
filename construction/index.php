@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/src/bootstrap.php';
 if (!defined('RAY_CONSTRUCTION_ENTRY')) {
     $query = $_GET; $query['business'] = 'construction';
     header('Location: /?' . http_build_query($query), true, 308);
     exit;
 }
+require __DIR__ . '/src/bootstrap.php';
 require __DIR__ . '/src/phase23.php';
 require __DIR__ . '/src/phase4.php';
 require __DIR__ . '/src/user_management.php';

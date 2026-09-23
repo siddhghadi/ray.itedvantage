@@ -261,6 +261,10 @@ $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $requestedBusiness = (string) ($_GET['business'] ?? '');
 $view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli','chemtech','construction','hospitality','insurance'], true) ? $requestedBusiness : 'home';
+if ($isAuthenticated && $view === 'construction') {
+    header('Location: ./construction/');
+    exit;
+}
 $allowedPages = ['dashboard','leads','payments','revenue','email','activity','calendar','settings'];
 $tdPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $allowedPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 $notice = '';

@@ -2,13 +2,15 @@
 declare(strict_types=1);
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>'Strict']);
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>'Strict']);
+    session_start();
+}
 // Construction is a RAY workspace. Every request, including exports and POSTs,
 // must use the existing RAY login; legacy Construction cookies grant no access.
 header('Cache-Control: no-store, private');
 if (($_SESSION['authenticated'] ?? false) !== true) {
-    header('Location: ../');
+    header('Location: /');
     exit;
 }
 const CRM_ROOT = __DIR__ . '/..';
@@ -42,7 +44,12 @@ $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
 function e(?string $value):string{return htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
 function id26():string{return strtoupper(substr(bin2hex(random_bytes(16)),0,26));}
 function csrf_valid():bool{return isset($_POST['csrf'])&&hash_equals((string)($_SESSION['csrf']??''),(string)$_POST['csrf']);}
-function go(string $path):never{header('Location: '.$path);exit;}
+function go(string $path):never{
+    if ($path === '../') $path = '/';
+    elseif ($path === './') $path = '/?business=construction';
+    elseif (str_starts_with($path, './?')) $path = '/?business=construction&' . substr($path, 3);
+    header('Location: '.$path);exit;
+}
 function principal():?array{global $constructionPrincipal;return $constructionPrincipal;}
 function require_user():array{$user=principal();if(!$user)go('../');return $user;}
 function can(PDO $db,array $user,string $permission,?string $projectId=null):bool{

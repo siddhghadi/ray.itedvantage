@@ -260,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $requestedBusiness = (string) ($_GET['business'] ?? '');
-$view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli','chemtech'], true) ? $requestedBusiness : 'home';
+$view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli','chemtech','construction','hospitality','insurance'], true) ? $requestedBusiness : 'home';
 $allowedPages = ['dashboard','leads','payments','revenue','email','activity','calendar','settings'];
 $tdPage = in_array((string) ($_GET['page'] ?? 'dashboard'), $allowedPages, true) ? (string) ($_GET['page'] ?? 'dashboard') : 'dashboard';
 $notice = '';
@@ -910,6 +910,8 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
         <?php require __DIR__ . '/views/itedvantage.php'; ?>
     <?php elseif ($view === 'rangoli'): ?>
         <?php require __DIR__ . '/views/rangoli.php'; ?>
+    <?php elseif (in_array($view, ['construction','hospitality','insurance'], true)): ?>
+        <?php require __DIR__ . '/views/demo-workspace.php'; ?>
     <?php elseif ($view === 'chemtech'): ?>
         <?php require __DIR__ . '/views/chemtech.php'; ?>
     <?php else: ?>
@@ -923,7 +925,10 @@ $filteredLeads = $categoryFilter === '' ? $leads : array_values(array_filter($le
                 <a class="business-card tech" href="?business=techdecodes"><span class="card-icon">TD</span><div><h2>TechDecodes</h2><p>Digital marketing</p></div><span class="status">Open workspace →</span></a>
                 <a class="business-card it" href="?business=itedvantage"><span class="card-icon">IT</span><div><h2>ITedvantage</h2><p>Blogs & digital products</p></div><span class="status">Open workspace →</span></a>
                 <a class="business-card wool" href="?business=rangoli"><span class="card-icon">WR</span><div><h2>Woollen Rangoli</h2><p>Products, dealers & orders</p></div><span class="status">Open workspace →</span></a>
-                <a class="business-card chem" href="?business=chemtech"><span class="card-icon"><?= htmlspecialchars((string) $chemtechSettings['short_name']) ?></span><div><h2><?= htmlspecialchars((string) $chemtechSettings['company_name']) ?></h2><p>Chemical trading CRM demo</p></div><span class="status">Open workspace →</span></a>
+                <a class="business-card chem" href="?business=chemtech"><span class="card-icon"><?= htmlspecialchars((string) $chemtechSettings['short_name']) ?></span><div><h2><?= htmlspecialchars((string) $chemtechSettings['company_name']) ?></h2><p>Chemical trading</p></div><span class="status">Open workspace →</span></a>
+                <a class="business-card tech" href="?business=construction"><span class="card-icon">CO</span><div><h2>Construction</h2><p>Projects, people & operations</p></div><span class="status">Open workspace →</span></a>
+                <a class="business-card tech" href="?business=hospitality"><span class="card-icon">HO</span><div><h2>Hospitality (Hotels)</h2><p>Workspace planned</p></div><span class="status">View workspace →</span></a>
+                <a class="business-card tech" href="?business=insurance"><span class="card-icon">IN</span><div><h2>Insurance</h2><p>Workspace planned</p></div><span class="status">View workspace →</span></a>
             </section>
         </main>
     <?php endif; ?>

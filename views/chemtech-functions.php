@@ -13,7 +13,7 @@ const CHEMTECH_DEMO_MARKER_FILE = __DIR__ . '/../storage/chemtech-demo-v1.json';
 function chemtechDefaults(): array
 {
     return [
-        'company_name' => 'ChemTech CRM',
+        'company_name' => 'Chemtech',
         'short_name' => 'CT',
         'accent' => '#faa61d',
         'legal_name' => 'ChemTech Trading Company',
@@ -33,7 +33,9 @@ function chemtechDefaults(): array
 
 function chemtechSettings(): array
 {
-    return array_replace(chemtechDefaults(), loadJsonFile(CHEMTECH_SETTINGS_FILE));
+    $settings = array_replace(chemtechDefaults(), loadJsonFile(CHEMTECH_SETTINGS_FILE));
+    if ($settings['company_name'] === 'ChemTech CRM') $settings['company_name'] = 'Chemtech';
+    return $settings;
 }
 
 function chemtechRedirect(string $page): never

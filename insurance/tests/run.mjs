@@ -17,6 +17,11 @@ let r=await request('/insurance/');if(!r.text.includes('Sign in'))throw Error('L
 r=await request('/insurance/',{csrf,action:'login',email:'admin-a@example.test',password:'Test-only-password-9283'});if(r.httpStatusCode!==302)throw Error('Login failed: '+r.text);
 for(const page of ['dashboard','clients','policies','investments','dues','plans','calculators','leads','documents','reports','settings']){r=await request('/insurance/?page='+page);if(r.httpStatusCode!==200||r.text.includes('Unable to display')||r.text.includes('request could not be completed'))throw Error('Page failed '+page);console.log('HTTP OK '+page);}
 r=await request('/insurance/?page=clients&id=2');if(r.text.includes('Edit Bob'))throw Error('Tenant leak');console.log('HTTP cross-agency ID blocked');
+r=await request('/insurance/?page=clients&id=1');if(r.text.includes('Unable to display')||!r.text.includes('CLIENT OVERVIEW')||!r.text.includes('History · previous coverage periods'))throw Error('Client hub failed');console.log('HTTP client-first profile with renewal history OK');
+const versionResult=await php.run({code:`<?php require '/www/insurance/src/domain.php';echo ins_query('SELECT version FROM records WHERE id=3')->fetchColumn();`});
+r=await request('/insurance/?page=clients&id=1',{csrf,action:'renew_period',id:'3',version:versionResult.text.trim(),start:'2025-01-01',expiry:'2025-12-31',premium:'1250',next_due:'2025-01-31',return_client:'1'});if(r.httpStatusCode!==302)throw Error('Renewal failed '+r.text);
+r=await request('/insurance/?page=clients&id=1');if(!r.text.includes('2025-12-31')||!r.text.includes('2024-12-31'))throw Error('Renewal history missing');console.log('HTTP renewal saved and prior coverage history retained');
+r=await request('/insurance/?page=policies&id=3');if(!r.text.includes('Open client workspace')||r.text.includes('>Save record</button>'))throw Error('Policy should open read-only');console.log('HTTP policy details are read-first');
 r=await request('/insurance/?page=clients',{csrf:'wrong',action:'save',kind:'clients',name:'CSRF test'});if(!r.text.includes('Session expired'))throw Error('CSRF not blocked');console.log('HTTP CSRF blocked');
 if(!process.argv.includes('--serve'))process.exit(0);
 // Persist the isolated demo filesystem across local preview requests. Never mounts production data.

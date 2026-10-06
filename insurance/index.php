@@ -52,6 +52,18 @@ try {
         if(!$a)throw new DomainException('Choose an agency with support permission.');
         ins_transaction(function()use($action,$u,$a,&$result){
             if($action==='save'){ins_save($u,$a,(string)$_POST['kind'],$_POST,(int)($_POST['id']??0));}
+            elseif($action==='renew_period') {
+                $r=ins_record($u,$a,(int)$_POST['id'],'edit');
+                if($r['kind']!=='policies'||$r['archived'])throw new DomainException('Select an active policy record.');
+                if((int)$_POST['version']!==(int)$r['version'])throw new DomainException('Policy changed. Refresh before renewing.');
+                $d=$r['data'];$start=ins_date((string)$_POST['start']);$expiry=ins_date((string)$_POST['expiry']);
+                if(!$start||!$expiry||$expiry<=$start||(!empty($d['expiry'])&&$start<=$d['expiry']))throw new DomainException('New coverage must start after the previous expiry and finish after its start.');
+                ins_allow($u,$a,'dues','edit');
+                foreach(ins_fields('policies') as $k=>$type)if($type==='money')$d[$k]/=100;
+                $d['start']=$start;$d['expiry']=$expiry;$d['next_due']=ins_date((string)$_POST['next_due']);$d['premium']=$_POST['premium'];$d['status']='active';$d['client_id']=$r['client_id'];$d['assigned_id']=$r['assigned_id'];$d['version']=$r['version'];
+                ins_query("UPDATE events SET status='renewed',revision=revision+1 WHERE agency_id=? AND record_id=? AND type='renewal' AND status='open'",[$a['id'],$r['id']]);
+                ins_save($u,$a,'policies',$d,(int)$r['id']);ins_audit((int)$a['id'],(int)$u['id'],'coverage renewed; previous period retained','policies:'.$r['id']);
+            }
             elseif($action==='archive'){$r=ins_record($u,$a,(int)$_POST['id'],'delete');if($r['kind']==='clients' && ins_query('SELECT id FROM records WHERE agency_id=? AND client_id=? AND archived=0',[$a['id'],$r['id']])->fetch())throw new DomainException('Archive linked records first.');$archived=(int)!$r['archived'];ins_query('UPDATE records SET archived=?,version=version+1 WHERE agency_id=? AND id=?',[$archived,$a['id'],$r['id']]);ins_audit((int)$a['id'],(int)$u['id'],$archived?'archive':'restore','record:'.$r['id']);}
             elseif($action==='payment')ins_pay($u,$a,(int)$_POST['event_id'],ins_money($_POST['amount']),ins_date($_POST['paid_at']),(string)$_POST['reference']);
             elseif($action==='contacted'){$e=ins_event($u,$a,(int)$_POST['event_id'],'edit');ins_query('UPDATE events SET contacted=1 WHERE id=?',[$e['id']]);ins_audit((int)$a['id'],(int)$u['id'],'marked contacted','event:'.$e['id']);}
@@ -86,7 +98,7 @@ try {
             elseif($action==='import_preview'||$action==='import_commit') {require __DIR__.'/src/import.php';$result=ins_import($u,$a,$action);}
             else throw new DomainException('Unknown action.');
         });
-        if(!$result){$_SESSION['ins_notice']='Saved successfully.';ins_redirect($page);}
+        if(!$result){$_SESSION['ins_notice']='Saved successfully.';if(!empty($_POST['return_client'])){$returnClient=ins_record($u,$a,(int)$_POST['return_client']);if($returnClient['kind']==='clients')ins_redirect('clients',['id'=>$returnClient['id']]);}ins_redirect($page);}
     }
     if($u&&$a&&isset($_GET['download'])) {require __DIR__.'/src/documents.php';ins_download($u,$a,(int)$_GET['download']);}
     if($u&&$a&&isset($_GET['export'])) {

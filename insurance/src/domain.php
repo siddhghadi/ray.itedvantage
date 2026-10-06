@@ -62,6 +62,7 @@ function ins_save(array $u,array $a,string $kind,array $input,int $id=0): int {
     ins_allow($u,$a,$kind,'edit');
     $old=$id?ins_record($u,$a,$id,'edit'):null;
     if($old && isset($old['data']['plan_snapshot']))throw new DomainException('Saved quotes are immutable. Create a new quote instead.');
+    if($old && $old['client_id'] && (int)($input['client_id']??0)!==(int)$old['client_id'])throw new DomainException('Existing records cannot be moved between clients.');
     if($old && $old['kind']!==$kind)throw new DomainException('Record type cannot change.');
     if($old && (int)($input['version']??0)!==(int)$old['version'])throw new DomainException('This record changed. Reopen it before saving.');
     $data=[]; foreach(ins_fields($kind) as $key=>$type) {

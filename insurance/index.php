@@ -27,6 +27,7 @@ try {
     }
     if(isset($_SESSION['ins_user']))$u=ins_user((int)$_SESSION['ins_user']);
     if($u){$agency=$u['role']==='platform'?(int)($_SESSION['ins_agency']??0):(int)$u['agency_id'];if($agency)$a=ins_context($u,$agency);}
+    if($a&&$u&&$a['demo']&&$u['role']==='admin'){require_once __DIR__.'/src/demo-history.php';ins_demo_history($u,$a);}
     if($_SERVER['REQUEST_METHOD']==='POST') {
         if(!hash_equals($_SESSION['ins_csrf'],(string)($_POST['csrf']??'')))throw new DomainException('Session expired. Refresh and retry.');
         $action=(string)($_POST['action']??'');

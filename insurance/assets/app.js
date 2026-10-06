@@ -1,5 +1,6 @@
 (() => {
   const body = document.body;
+  document.querySelector('#edit-client-toggle')?.addEventListener('click', e => { const panel=document.querySelector('#client-edit');panel.hidden=!panel.hidden;e.currentTarget.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden)panel.querySelector('input:not([type=hidden])')?.focus(); });
   // Theme only: never store client records, credentials or quotations in browser storage.
   try { if(localStorage.getItem('insurance-theme') === 'dark') body.classList.add('dark'); } catch {}
   document.querySelector('#theme')?.addEventListener('click', () => { body.classList.toggle('dark'); try { localStorage.setItem('insurance-theme', body.classList.contains('dark') ? 'dark' : 'light'); } catch {} });

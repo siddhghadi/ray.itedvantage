@@ -52,3 +52,7 @@ require dirname(__DIR__).'/src/meeting.php';
 $demoUser=ins_transaction(fn()=>ins_seed_demo($pid));
 check(ins_user($demoUser)['role']==='admin','Meeting demo provisioned');
 check(ins_transaction(fn()=>ins_seed_demo($pid))===$demoUser,'Demo initialization does not duplicate records');
+require dirname(__DIR__).'/src/demo-history.php';
+$du=ins_user($demoUser);$da=ins_context($du,(int)$du['agency_id']);
+ins_demo_history($du,$da);ins_demo_history($du,$da);
+check((int)ins_query('SELECT COUNT(*) FROM record_revisions WHERE agency_id=? AND version<0',[$da['id']])->fetchColumn()===60,'Five demo periods per policy, without duplicates');

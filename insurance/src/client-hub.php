@@ -8,11 +8,12 @@ function hub_form(array $u,array $a,int $cid,string $kind,?array $record=null):v
     echo '<button>Save '.ie($kind==='clients'?'client':'record').'</button></form>';
 }
 ?>
-<a class="back-link" href="<?=ie(iu('clients'))?>">← All clients</a>
+<div class="section-head"><a class="back-link" href="<?=ie(iu('clients'))?>">← All clients</a><button class="secondary" id="edit-client-toggle" aria-controls="client-edit" aria-expanded="false">Edit client details</button></div>
+<section class="panel" id="client-edit" hidden><h2>Edit client details</h2><?php hub_form($u,$a,$cid,'clients',$client);?></section>
 <section class="panel client-heading"><div class="section-head"><div><span class="eyebrow">CLIENT OVERVIEW</span><h2><?=ie($c['name'])?></h2><p><?=ie($c['city']??'')?> · <?=ie($c['email']?:'No email recorded')?> · <?=ie($c['phone']?:'No phone recorded')?></p></div><span class="badge"><?=$client['archived']?'Archived':'Client'?></span></div>
-<div class="form-grid"><div><h3>Contact details</h3><p><?=nl2br(ie($c['address']?:'No address recorded'))?> <?=ie($c['pincode'])?></p><p>Date of birth: <?=ie($c['dob']?:'Not recorded')?></p><p>Source: <?=ie($c['source']?:'Not recorded')?> · Tags: <?=ie($c['tags']?:'None')?></p></div><div><h3>Family & notes</h3><p><?=nl2br(ie($c['family']?:'No family details yet'))?></p><p><?=nl2br(ie($c['notes']))?></p></div></div>
+<?php if($a['demo']):?><p class="muted">Demo histories are illustrative sample coverage periods, not actual payment records.</p><?php endif ?>
 <div class="actions"><?php if($c['phone']):?><a class="button secondary" href="tel:<?=ie(preg_replace('/[^+0-9]/','',$c['phone']))?>">Call</a><?php endif ?><?php if($c['email']&&in_array($c['consent'],['email','both'],true)):?><a class="button secondary" href="mailto:<?=ie($c['email'])?>">Compose email</a><?php endif ?></div>
-<details class="compact-edit"><summary>Edit client details</summary><?php hub_form($u,$a,$cid,'clients',$client);?></details></section>
+<h3>Full client details</h3><dl class="record-details"><?php foreach(ins_fields('clients') as $key=>$type):?><dt><?=ie(ucwords(str_replace('_',' ',$key)))?></dt><dd><?=nl2br(ie(($c[$key]??'')!==''?$c[$key]:'Not recorded'))?></dd><?php endforeach ?><dt>Created</dt><dd><?=ie($client['created_at'])?></dd><dt>Last updated</dt><dd><?=ie($client['updated_at'])?></dd></dl></section>
 <?php
 $sections=['policies'=>'Policies & coverage','investments'=>'Investments','leads'=>'Follow-ups','claims'=>'Claims','commissions'=>'Commissions'];
 foreach($sections as $kind=>$label):if(!in_array($kind,$a['settings']['modules'],true))continue;

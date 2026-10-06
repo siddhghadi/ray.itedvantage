@@ -261,6 +261,11 @@ $isAuthenticated = ($_SESSION['authenticated'] ?? false) === true;
 $isSetup = $auth !== null;
 $requestedBusiness = (string) ($_GET['business'] ?? '');
 $view = $isAuthenticated && in_array($requestedBusiness, ['techdecodes','itedvantage','rangoli','chemtech','construction','hospitality','insurance'], true) ? $requestedBusiness : 'home';
+if ($isAuthenticated && $view === 'insurance') {
+    define('RAY_INSURANCE_ENTRY', true);
+    require __DIR__ . '/insurance/index.php';
+    exit;
+}
 if ($isAuthenticated && $view === 'construction') {
     define('RAY_CONSTRUCTION_ENTRY', true);
     require __DIR__ . '/construction/index.php';

@@ -1,0 +1,8 @@
+/* One compact mobile row; keep the page title from pushing actions off-screen. */
+@media(max-width:760px){
+  .workspace>header{padding:8px 10px;gap:6px;border-radius:16px;margin-bottom:16px}
+  .workspace>header>div:first-child{min-width:0;flex:1}
+  .workspace>header h1{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
+  .workspace>header .header-actions{flex-wrap:nowrap;flex-shrink:0;gap:4px}
+  .workspace>header .header-actions button,.workspace>header .header-actions .button{padding:8px;min-height:40px;font-size:12px}
+}
